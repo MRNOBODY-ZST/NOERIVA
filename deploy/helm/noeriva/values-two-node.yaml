@@ -1,0 +1,64 @@
+# Site-specific two-node K3s profile. Passwords come only from noeriva-runtime.
+fullnameOverride: noeriva
+control:
+  topologySpreadWhenUnsatisfiable: DoNotSchedule
+  image: {repository: noeriva/control, tag: 20260909-topology-r1, pullPolicy: IfNotPresent}
+  replicas: 2
+  autoscaling: {enabled: true, minReplicas: 2, maxReplicas: 2, targetCPUUtilizationPercentage: 65}
+worker:
+  enabled: true
+  nodeSelector: {noeriva.io/data-plane: 'true'}
+  applicationCollectorEnabled: true
+  natReceiver:
+    enabled: true
+    port: 2055
+    nodePort: 32055
+    allowedSources: [192.168.253.1/32]
+console:
+  topologySpreadWhenUnsatisfiable: DoNotSchedule
+  image: {repository: noeriva/console, tag: 20260909-topology-r4, pullPolicy: IfNotPresent}
+  replicas: 2
+runtime:
+  organizationId: default
+  existingSecret: noeriva-runtime
+  deviceAllowedCidrs: [192.168.254.0/24, 192.168.4.0/24]
+  r2dbcUrl: r2dbc:mysql://noeriva-mysql:3306/noeriva
+  flywayUrl: jdbc:mysql://noeriva-mysql:3306/noeriva?allowPublicKeyRetrieval=true&sslMode=DISABLED
+  databaseUsername: noeriva
+  redisHost: noeriva-redis
+  redisPort: 6379
+  redisSsl: false
+  kafkaBootstrapServers: noeriva-kafka:9092
+  kafkaSecurityProtocol: PLAINTEXT
+  clickhouseUrl: http://noeriva-clickhouse:8123
+  clickhouseUsername: noeriva
+  metricsUrl: http://noeriva-victoriametrics:8428
+  elasticsearchUrl: http://noeriva-elasticsearch:9200
+  elasticsearchUsername: elastic
+nodeSelector:
+  noeriva.io/compute: 'true'
+networkPolicy:
+  enabled: true
+  ingressNamespaceSelector: {kubernetes.io/metadata.name: kube-system}
+  ingressPodSelector: {app.kubernetes.io/name: traefik}
+  dataPlaneEgress:
+    - to:
+        - podSelector: {matchLabels: {noeriva.io/data-plane: 'true'}}
+      ports:
+        - {protocol: TCP, port: 3306}
+        - {protocol: TCP, port: 6379}
+        - {protocol: TCP, port: 9092}
+        - {protocol: TCP, port: 8123}
+        - {protocol: TCP, port: 8428}
+        - {protocol: TCP, port: 9200}
+  deviceEgress:
+    - to:
+        - ipBlock: {cidr: 192.168.254.0/24}
+        - ipBlock: {cidr: 192.168.4.0/24}
+      ports:
+        - {protocol: UDP, port: 161}
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+        - {protocol: TCP, port: 22}
+ingress:
+  enabled: false

@@ -1,0 +1,159 @@
+{
+  "verifiedAt": "2026-09-07T04:14:49.099093+00:00",
+  "entries": [
+    "http://192.168.4.62",
+    "http://192.168.4.63"
+  ],
+  "kubernetesVersion": "v1.36.4+k3s1",
+  "applications": {
+    "control": [
+      {
+        "node": "argus-worker",
+        "ready": true,
+        "image": "noeriva/control:20260907-k8s",
+        "imageID": "sha256:9cba1d26c58a0b73735e3bf644e565efa3940976e78ef045ad88027ddd6f43ee",
+        "restarts": 0
+      },
+      {
+        "node": "argus-primary",
+        "ready": true,
+        "image": "noeriva/control:20260907-k8s",
+        "imageID": "sha256:9cba1d26c58a0b73735e3bf644e565efa3940976e78ef045ad88027ddd6f43ee",
+        "restarts": 0
+      }
+    ],
+    "console": [
+      {
+        "node": "argus-worker",
+        "ready": true,
+        "image": "noeriva/console:20260907-k8s",
+        "imageID": "sha256:3f0cbc89ef93dbb8b0c15f7a05fe032b1d63c248b576e1d312ede532ff9e3796",
+        "restarts": 0
+      },
+      {
+        "node": "argus-primary",
+        "ready": true,
+        "image": "noeriva/console:20260907-k8s",
+        "imageID": "sha256:3f0cbc89ef93dbb8b0c15f7a05fe032b1d63c248b576e1d312ede532ff9e3796",
+        "restarts": 0
+      }
+    ],
+    "worker": [
+      {
+        "node": "argus-primary",
+        "ready": true,
+        "image": "noeriva/control:20260907-k8s",
+        "imageID": "sha256:9cba1d26c58a0b73735e3bf644e565efa3940976e78ef045ad88027ddd6f43ee",
+        "restarts": 0
+      }
+    ]
+  },
+  "readyDataServices": 5,
+  "oldTargetNodePods": [],
+  "oldDataNamespaceRemoved": true,
+  "oldObservabilityNamespaceRemoved": true,
+  "oldPvRetention": [
+    {
+      "name": "pvc-69daf824-92a7-4c12-8d3d-40bbb0d064ac",
+      "reclaimPolicy": "Retain",
+      "phase": "Released"
+    },
+    {
+      "name": "pvc-f6da3403-ca5c-4d24-87cc-85f3cb937d4c",
+      "reclaimPolicy": "Retain",
+      "phase": "Released"
+    }
+  ],
+  "backupDirectory": "/var/backups/noeriva-replacement-20260907",
+  "backupVerified": true,
+  "backupRestoreDrillPerformed": false,
+  "unmodifiedOutOfScopeNode": "192.168.4.61",
+  "migration": {
+    "sql": {
+      "sha256Verified": 13,
+      "flyway": 7,
+      "counts": {
+        "device": 6,
+        "device_current": 6,
+        "source_current": 6,
+        "device_connection": 6,
+        "device_metric_binding": 0,
+        "network_interface": 0,
+        "alert": 0,
+        "discovery_candidate": 26,
+        "discovery_run": 1,
+        "discovery_mac_claim": 26,
+        "control_audit": 42
+      },
+      "disabledConnections": 6,
+      "associations": 1
+    },
+    "vm": {
+      "sourceRows": 35,
+      "sourceSamples": 1990,
+      "uniqueLabelTimestampValues": 1990,
+      "restoredUniqueLabelTimestampValues": 1990,
+      "verified": true
+    },
+    "ch": {
+      "sourceEvents": 2388,
+      "restoredEvents": 2388,
+      "fullRowEquality": true,
+      "version": "26.3.32.14"
+    }
+  },
+  "credentialMigration": {
+    "deviceCredentialCiphertextsAndEpochMatch": true,
+    "devices": 6,
+    "sourceSequence": 399,
+    "targetSequenceAfterOneTest": 400,
+    "sequenceDeltaPerDevice": 1
+  },
+  "browserVerification": {
+    "engine": "Microsoft Edge via Computer Use",
+    "loginEntrypoints": [
+      "http://192.168.4.62",
+      "http://192.168.4.63"
+    ],
+    "verifiedPages": [
+      "运行总览",
+      "资产目录",
+      "基础设施拓扑",
+      "监测与传感器",
+      "网络接口",
+      "告警队列",
+      "事件工作台",
+      "事件流",
+      "关联调查",
+      "证据资料",
+      "配置与变更",
+      "采集器",
+      "合成探测",
+      "偏好与设计",
+      "系统能力",
+      "发现设备"
+    ],
+    "unavailableDataBanner": false,
+    "browserConsoleErrors": 0,
+    "notes": "真实数据页面与合理空状态、候选关联、近期采集事件均已检查；不是所有写入操作的真机全覆盖测试"
+  },
+  "sourceHardwareConnectionsDisabled": 6,
+  "kafkaProjectionLagByPartition": {
+    "0": 0,
+    "1": 0,
+    "2": 0
+  },
+  "unpublishedOutboxAtVerification": 0,
+  "temporaryRemoteSecretFilesRemoved": true,
+  "oldArgusRunningContainers": {
+    "192.168.4.62": 0,
+    "192.168.4.63": 0
+  },
+  "apiVerification": {
+    "report": "two-node-api-verification-client-warmed.json",
+    "passed": true,
+    "requests": 160,
+    "concurrency": 16,
+    "p95Ms": 217.24
+  }
+}

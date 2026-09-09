@@ -1,0 +1,683 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noeriva-mysql
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: mysql
+    noeriva.io/data-plane: 'true'
+spec:
+  serviceName: noeriva-mysql
+  replicas: 1
+  revisionHistoryLimit: 3
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-data
+      app.kubernetes.io/part-of: noeriva
+      app.kubernetes.io/component: mysql
+      noeriva.io/data-plane: 'true'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: mysql
+        noeriva.io/data-plane: 'true'
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: mysql
+        image: mysql:8.4.11
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: mysql
+          containerPort: 3306
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1500m
+            memory: 1Gi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+        - name: tmp
+          mountPath: /tmp
+        - name: mysql-run
+          mountPath: /var/run/mysqld
+        - name: mysql-files
+          mountPath: /var/lib/mysql-files
+        env:
+        - name: MYSQL_DATABASE
+          value: noeriva
+        - name: MYSQL_USER
+          value: noeriva
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: noeriva-runtime
+              key: SPRING_R2DBC_PASSWORD
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: noeriva-runtime
+              key: NOERIVA_DB_ROOT_PASSWORD
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" -D noeriva
+              -e "SELECT 1" >/dev/null
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 60
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" -D noeriva
+              -e "SELECT 1" >/dev/null
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 128Mi
+      - name: mysql-run
+        emptyDir:
+          sizeLimit: 32Mi
+      - name: mysql-files
+        emptyDir:
+          sizeLimit: 32Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: mysql
+        noeriva.io/data-plane: 'true'
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noeriva-redis
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: redis
+    noeriva.io/data-plane: 'true'
+spec:
+  serviceName: noeriva-redis
+  replicas: 1
+  revisionHistoryLimit: 3
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-data
+      app.kubernetes.io/part-of: noeriva
+      app.kubernetes.io/component: redis
+      noeriva.io/data-plane: 'true'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: redis
+        noeriva.io/data-plane: 'true'
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: redis
+        image: redis:8.2.9-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: 6379
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: noeriva-runtime
+              key: SPRING_DATA_REDIS_PASSWORD
+        command:
+        - /bin/sh
+        - -ec
+        - exec redis-server --requirepass "$REDIS_PASSWORD" --maxmemory 192mb --maxmemory-policy
+          allkeys-lru --save "" --appendonly no
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG
+          periodSeconds: 3
+          timeoutSeconds: 3
+          failureThreshold: 30
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG
+          periodSeconds: 5
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 128Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: redis
+        noeriva.io/data-plane: 'true'
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noeriva-kafka
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: kafka
+    noeriva.io/data-plane: 'true'
+spec:
+  serviceName: noeriva-kafka
+  replicas: 1
+  revisionHistoryLimit: 3
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-data
+      app.kubernetes.io/part-of: noeriva
+      app.kubernetes.io/component: kafka
+      noeriva.io/data-plane: 'true'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: kafka
+        noeriva.io/data-plane: 'true'
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: kafka
+        image: apache/kafka:4.3.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: broker
+          containerPort: 9092
+        - name: controller
+          containerPort: 9093
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1500m
+            memory: 1Gi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/kafka/data
+        - name: tmp
+          mountPath: /tmp
+        - name: kafka-config
+          mountPath: /opt/kafka/config
+        - name: kafka-logs
+          mountPath: /opt/kafka/logs
+        env:
+        - name: CLUSTER_ID
+          value: MkU3OEVBNTcwNTJENDM2Qk
+        - name: KAFKA_NODE_ID
+          value: '1'
+        - name: KAFKA_PROCESS_ROLES
+          value: broker,controller
+        - name: KAFKA_LISTENERS
+          value: PLAINTEXT://:9092,CONTROLLER://:9093
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: PLAINTEXT://noeriva-kafka.noeriva-system.svc.cluster.local:9092
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+        - name: KAFKA_CONTROLLER_LISTENER_NAMES
+          value: CONTROLLER
+        - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+          value: 1@noeriva-kafka.noeriva-system.svc.cluster.local:9093
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: PLAINTEXT
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: '1'
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: '1'
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: '1'
+        - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+          value: '1'
+        - name: KAFKA_MIN_INSYNC_REPLICAS
+          value: '1'
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: 'false'
+        - name: KAFKA_LOG_DIRS
+          value: /var/lib/kafka/data
+        - name: KAFKA_LOG_RETENTION_HOURS
+          value: '-1'
+        - name: KAFKA_LOG_RETENTION_BYTES
+          value: '-1'
+        - name: KAFKA_HEAP_OPTS
+          value: -Xms256m -Xmx512m
+        startupProbe:
+          tcpSocket:
+            port: broker
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 60
+        readinessProbe:
+          tcpSocket:
+            port: broker
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: broker
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 128Mi
+      - name: kafka-config
+        emptyDir:
+          sizeLimit: 32Mi
+      - name: kafka-logs
+        emptyDir:
+          sizeLimit: 32Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: kafka
+        noeriva.io/data-plane: 'true'
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noeriva-clickhouse
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: clickhouse
+    noeriva.io/data-plane: 'true'
+spec:
+  serviceName: noeriva-clickhouse
+  replicas: 1
+  revisionHistoryLimit: 3
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-data
+      app.kubernetes.io/part-of: noeriva
+      app.kubernetes.io/component: clickhouse
+      noeriva.io/data-plane: 'true'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: clickhouse
+        noeriva.io/data-plane: 'true'
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: clickhouse
+        # Node62 is x86-64-v2; 26.8's official amd64 image requires AVX2/v3.
+        image: clickhouse/clickhouse-server:26.3.32.14
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8123
+        - name: native
+          containerPort: 9000
+        - name: metrics
+          containerPort: 9363
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: '2'
+            memory: 6Gi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/clickhouse
+        - name: tmp
+          mountPath: /tmp
+        - name: clickhouse-users
+          mountPath: /etc/clickhouse-server/users.d
+        - name: clickhouse-logs
+          mountPath: /var/log/clickhouse-server
+        - name: clickhouse-config
+          mountPath: /etc/clickhouse-server/config.d/noeriva.xml
+          subPath: noeriva.xml
+          readOnly: true
+        env:
+        - name: CLICKHOUSE_DB
+          value: noeriva
+        - name: CLICKHOUSE_USER
+          value: noeriva
+        - name: CLICKHOUSE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: noeriva-runtime
+              key: NOERIVA_CLICKHOUSE_PASSWORD
+        - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+          value: '1'
+        startupProbe:
+          httpGet:
+            path: /ping
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 60
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 128Mi
+      - name: clickhouse-users
+        emptyDir:
+          sizeLimit: 32Mi
+      - name: clickhouse-logs
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: clickhouse-config
+        configMap:
+          name: noeriva-clickhouse-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: clickhouse
+        noeriva.io/data-plane: 'true'
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 100Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noeriva-victoriametrics
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: victoriametrics
+    noeriva.io/data-plane: 'true'
+spec:
+  serviceName: noeriva-victoriametrics
+  replicas: 1
+  revisionHistoryLimit: 3
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-data
+      app.kubernetes.io/part-of: noeriva
+      app.kubernetes.io/component: victoriametrics
+      noeriva.io/data-plane: 'true'
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: victoriametrics
+        noeriva.io/data-plane: 'true'
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: victoriametrics
+        image: victoriametrics/victoria-metrics:v1.151.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8428
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 250m
+            memory: 384Mi
+          limits:
+            cpu: '1'
+            memory: 768Mi
+        volumeMounts:
+        - name: data
+          mountPath: /storage
+        - name: tmp
+          mountPath: /tmp
+        args:
+        - -storageDataPath=/storage
+        - -retentionPeriod=100y
+        - -memory.allowedPercent=60
+        - -search.maxQueryDuration=5s
+        - -search.maxConcurrentRequests=8
+        - -search.maxSamplesPerSeries=100000
+        - -search.maxUniqueTimeseries=100
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 5
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 128Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app.kubernetes.io/name: noeriva-data
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: victoriametrics
+        noeriva.io/data-plane: 'true'
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 50Gi

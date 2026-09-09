@@ -1,0 +1,154 @@
+{
+  "verifiedAt": "2026-09-07T05:53:56.172341+00:00",
+  "pods": [
+    {
+      "name": "noeriva-console-77cbc9dbf9-dg24z",
+      "node": "argus-primary",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "console",
+          "ready": true,
+          "restarts": 0,
+          "image": "docker.io/noeriva/console:20260907-monitoring-r1",
+          "imageId": "sha256:1c289de1ef95afcbf34bfa513eb9ffedbd6435f8d1deb565972d0a88db3f8823"
+        }
+      ]
+    },
+    {
+      "name": "noeriva-console-77cbc9dbf9-rrcgn",
+      "node": "argus-worker",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "console",
+          "ready": true,
+          "restarts": 0,
+          "image": "docker.io/noeriva/console:20260907-monitoring-r1",
+          "imageId": "sha256:1c289de1ef95afcbf34bfa513eb9ffedbd6435f8d1deb565972d0a88db3f8823"
+        }
+      ]
+    },
+    {
+      "name": "noeriva-control-5596774695-k65zd",
+      "node": "argus-primary",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "control",
+          "ready": true,
+          "restarts": 0,
+          "image": "docker.io/noeriva/control:20260907-monitoring-r3",
+          "imageId": "sha256:6f870bd267627598d5d600651f30adaf5ffce7007698961e2cc353873617f78c"
+        }
+      ]
+    },
+    {
+      "name": "noeriva-control-5596774695-qjfw4",
+      "node": "argus-worker",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "control",
+          "ready": true,
+          "restarts": 0,
+          "image": "docker.io/noeriva/control:20260907-monitoring-r3",
+          "imageId": "sha256:6f870bd267627598d5d600651f30adaf5ffce7007698961e2cc353873617f78c"
+        }
+      ]
+    },
+    {
+      "name": "noeriva-worker-76c77bd56b-456st",
+      "node": "argus-primary",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "worker",
+          "ready": true,
+          "restarts": 0,
+          "image": "docker.io/noeriva/control:20260907-monitoring-r3",
+          "imageId": "sha256:6f870bd267627598d5d600651f30adaf5ffce7007698961e2cc353873617f78c"
+        }
+      ]
+    }
+  ],
+  "dataServicesReady": 5,
+  "tables": [
+    {
+      "name": "application_observations",
+      "engine": "ReplacingMergeTree",
+      "create_table_query": "CREATE TABLE noeriva.application_observations (`organization_id` String, `device_id` String, `observation_id` String, `observed_at` DateTime64(3, 'UTC'), `interface_index` UInt32, `direction` LowCardinality(String), `application` String, `payload` String, `revision` UInt64) ENGINE = ReplacingMergeTree(revision) PARTITION BY toYYYYMM(observed_at) ORDER BY (organization_id, device_id, observed_at, observation_id) SETTINGS index_granularity = 2048"
+    },
+    {
+      "name": "nat_audit_events",
+      "engine": "ReplacingMergeTree",
+      "create_table_query": "CREATE TABLE noeriva.nat_audit_events (`organization_id` String, `device_id` String, `event_id` FixedString(64), `exported_at` DateTime64(3, 'UTC'), `received_at` DateTime64(3, 'UTC'), `private_ip` String, `public_ip` String, `protocol` Int16, `payload` String, `revision` UInt64, INDEX nat_received_at received_at TYPE minmax GRANULARITY 1, INDEX nat_private_ip private_ip TYPE bloom_filter(0.01) GRANULARITY 1, INDEX nat_public_ip public_ip TYPE bloom_filter(0.01) GRANULARITY 1) ENGINE = ReplacingMergeTree(revision) PARTITION BY toYYYYMM(exported_at) ORDER BY (organization_id, device_id, exported_at, event_id) SETTINGS index_granularity = 256"
+    }
+  ],
+  "natSummary": [
+    {
+      "uniqueEvents": 19239,
+      "firstReceived": "2026-09-07 05:41:25.977",
+      "lastReceived": "2026-09-07 05:53:55.263",
+      "eventTypes": [
+        "DELETE",
+        "CREATE"
+      ],
+      "templates": [
+        256
+      ]
+    }
+  ],
+  "applicationSummary": [
+    {
+      "interface_index": 8,
+      "direction": "IN",
+      "observations": 2076,
+      "firstObserved": "2026-09-07 05:40:38.273",
+      "lastObserved": "2026-09-07 05:53:03.223"
+    },
+    {
+      "interface_index": 8,
+      "direction": "OUT",
+      "observations": 2076,
+      "firstObserved": "2026-09-07 05:40:38.273",
+      "lastObserved": "2026-09-07 05:53:03.223"
+    },
+    {
+      "interface_index": 9,
+      "direction": "IN",
+      "observations": 996,
+      "firstObserved": "2026-09-07 05:40:38.273",
+      "lastObserved": "2026-09-07 05:53:03.223"
+    },
+    {
+      "interface_index": 9,
+      "direction": "OUT",
+      "observations": 996,
+      "firstObserved": "2026-09-07 05:40:38.273",
+      "lastObserved": "2026-09-07 05:53:03.223"
+    }
+  ],
+  "latestApplicationSample": [
+    {
+      "interface_index": 8,
+      "direction": "IN",
+      "observations": 128
+    },
+    {
+      "interface_index": 8,
+      "direction": "OUT",
+      "observations": 128
+    },
+    {
+      "interface_index": 9,
+      "direction": "IN",
+      "observations": 128
+    },
+    {
+      "interface_index": 9,
+      "direction": "OUT",
+      "observations": 128
+    }
+  ]
+}

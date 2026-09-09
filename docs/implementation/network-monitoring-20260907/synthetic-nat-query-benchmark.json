@@ -1,0 +1,194 @@
+{
+  "synthetic": true,
+  "container": "noeriva-nat-perf-20260907-256",
+  "version": "26.3.32.14",
+  "rows": 200000,
+  "days": 10,
+  "wireBytes": 273670026,
+  "seedSeconds": 4.468,
+  "runs": [
+    {
+      "hours": 1,
+      "queryId": "synthetic-nat-perf-1",
+      "wallSeconds": 0.674,
+      "exitCode": 0,
+      "resultLines": 101,
+      "resultBytes": 105765,
+      "error": "Cannot resolve host (86d48e2101f9), error 0: DNS error.\nDB::DNSResolver::Impl::Impl(): Code: 198. DB::NetException: Not found address of host: 86d48e2101f9. (DNS_ERROR), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x0000000017ba662a\n1. DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000ff1d4ce\n2. DB::NetException::NetException<String const&>(int, FormatStringHelperImpl<std::type_identity<String const&>::type>, String const&) @ 0x0000000017b6e2c1\n3. DB::(anonymous namespace)::hostByName(String const&) @ 0x0000000017b72848\n4. DB::DNSResolver::DNSResolver() @ 0x0000000017b6d52a\n5. DB::Connection::connect(DB::ConnectionTimeouts const&) @ 0x000000001eb1e852\n6. DB::Connection::getServerVersion(DB::ConnectionTimeouts const&, String&, unsigned long&, unsigned long&, unsigned long&, unsigned long&) @ 0x000000001eb23e50\n7. DB::Client::connect() @ 0x0000000017e90834\n8. DB::Client"
+    },
+    {
+      "hours": 24,
+      "queryId": "synthetic-nat-perf-24",
+      "wallSeconds": 0.571,
+      "exitCode": 0,
+      "resultLines": 101,
+      "resultBytes": 105765,
+      "error": "Cannot resolve host (86d48e2101f9), error 0: DNS error.\nDB::DNSResolver::Impl::Impl(): Code: 198. DB::NetException: Not found address of host: 86d48e2101f9. (DNS_ERROR), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x0000000017ba662a\n1. DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000ff1d4ce\n2. DB::NetException::NetException<String const&>(int, FormatStringHelperImpl<std::type_identity<String const&>::type>, String const&) @ 0x0000000017b6e2c1\n3. DB::(anonymous namespace)::hostByName(String const&) @ 0x0000000017b72848\n4. DB::DNSResolver::DNSResolver() @ 0x0000000017b6d52a\n5. DB::Connection::connect(DB::ConnectionTimeouts const&) @ 0x000000001eb1e852\n6. DB::Connection::getServerVersion(DB::ConnectionTimeouts const&, String&, unsigned long&, unsigned long&, unsigned long&, unsigned long&) @ 0x000000001eb23e50\n7. DB::Client::connect() @ 0x0000000017e90834\n8. DB::Client"
+    },
+    {
+      "scenario": "shuffledExporterClock",
+      "hours": 1,
+      "queryId": "synthetic-nat-skew-1",
+      "wallSeconds": 0.591,
+      "exitCode": 51,
+      "resultLines": 0,
+      "resultBytes": 0,
+      "error": "Exception::NetException<String const&>(int, FormatStringHelperImpl<std::type_identity<String const&>::type>, String const&) @ 0x0000000017b6e2c1\n3. DB::(anonymous namespace)::hostByName(String const&) @ 0x0000000017b72848\n4. DB::DNSResolver::DNSResolver() @ 0x0000000017b6d52a\n5. DB::ConnectionParameters::ConnectionParameters(Poco::Util::AbstractConfiguration const&, StrongTypedef<String, DB::HostTag> const&, StrongTypedef<String, DB::DatabaseTag> const&, std::optional<unsigned short>) @ 0x000000001eb41ebb\n6. DB::Client::connect() @ 0x0000000017e900cf\n7. DB::Client::main(std::vector<String, std::allocator<String>> const&) @ 0x0000000017e8dfd8\n8. Poco::Util::Application::run() @ 0x0000000024829fb1\n9. mainEntryClickHouseClient(int, char**) @ 0x0000000017ea1992\n10. main @ 0x000000000ff1500a\n11. __pow_finite @ 0x0000000000029d90\n12. __libc_start_main @ 0x0000000000029e40\n13. _start @ 0x00000000099b906e\n (version 26.3.32.14 (official build))\nReceived exception from server (version 26.3.32):\nCode: 307. DB::Exception: Received from 127.0.0.1:9000. DB::Exception: Limit for rows or bytes to read exceeded, max bytes: 128.00 MiB, current bytes: 128.81 MiB: While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (TOO_MANY_BYTES)\n(query: SELECT payload FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T23:00:00+00:00') AND received_at<parseDateTime64BestEffort('2026-09-07T00:00:00.000Z') ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow)\n"
+    },
+    {
+      "scenario": "shuffledExporterClock",
+      "hours": 24,
+      "queryId": "synthetic-nat-skew-24",
+      "wallSeconds": 0.612,
+      "exitCode": 51,
+      "resultLines": 0,
+      "resultBytes": 0,
+      "error": "Exception::NetException<String const&>(int, FormatStringHelperImpl<std::type_identity<String const&>::type>, String const&) @ 0x0000000017b6e2c1\n3. DB::(anonymous namespace)::hostByName(String const&) @ 0x0000000017b72848\n4. DB::DNSResolver::DNSResolver() @ 0x0000000017b6d52a\n5. DB::ConnectionParameters::ConnectionParameters(Poco::Util::AbstractConfiguration const&, StrongTypedef<String, DB::HostTag> const&, StrongTypedef<String, DB::DatabaseTag> const&, std::optional<unsigned short>) @ 0x000000001eb41ebb\n6. DB::Client::connect() @ 0x0000000017e900cf\n7. DB::Client::main(std::vector<String, std::allocator<String>> const&) @ 0x0000000017e8dfd8\n8. Poco::Util::Application::run() @ 0x0000000024829fb1\n9. mainEntryClickHouseClient(int, char**) @ 0x0000000017ea1992\n10. main @ 0x000000000ff1500a\n11. __pow_finite @ 0x0000000000029d90\n12. __libc_start_main @ 0x0000000000029e40\n13. _start @ 0x00000000099b906e\n (version 26.3.32.14 (official build))\nReceived exception from server (version 26.3.32):\nCode: 307. DB::Exception: Received from 127.0.0.1:9000. DB::Exception: Limit for rows or bytes to read exceeded, max bytes: 128.00 MiB, current bytes: 128.03 MiB: While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (TOO_MANY_BYTES)\n(query: SELECT payload FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T00:00:00+00:00') AND received_at<parseDateTime64BestEffort('2026-09-07T00:00:00.000Z') ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow)\n"
+    }
+  ],
+  "queryTemplate": "SELECT payload FROM synthetic_nat_perf.nat_audit_events FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T00:00:00.000Z') AND received_at<parseDateTime64BestEffort('2026-09-07T00:00:00.000Z') ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow",
+  "queryLog": [
+    {
+      "query_id": "synthetic-nat-perf-1",
+      "type": "QueryFinish",
+      "read_rows": 1216,
+      "read_bytes": 1275104,
+      "memory_usage": 2120827,
+      "query_duration_ms": 101,
+      "result_rows": 101,
+      "exception_code": 0,
+      "exception": ""
+    },
+    {
+      "query_id": "synthetic-nat-perf-24",
+      "type": "QueryFinish",
+      "read_rows": 20416,
+      "read_bytes": 21408436,
+      "memory_usage": 4473106,
+      "query_duration_ms": 12,
+      "result_rows": 101,
+      "exception_code": 0,
+      "exception": ""
+    },
+    {
+      "query_id": "synthetic-nat-skew-1",
+      "type": "ExceptionWhileProcessing",
+      "read_rows": 126720,
+      "read_bytes": 135071254,
+      "memory_usage": 5594911,
+      "query_duration_ms": 34,
+      "result_rows": 0,
+      "exception_code": 307,
+      "exception": "Code: 307. DB::Exception: Limit for rows or bytes to read exceeded, max bytes: 128.00 MiB, current bytes: 128.81 MiB: While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (TOO_MANY_BYTES) (version 26.3.32.14 (official build))"
+    },
+    {
+      "query_id": "synthetic-nat-skew-24",
+      "type": "ExceptionWhileProcessing",
+      "read_rows": 126720,
+      "read_bytes": 135071302,
+      "memory_usage": 18715844,
+      "query_duration_ms": 23,
+      "result_rows": 0,
+      "exception_code": 307,
+      "exception": "Code: 307. DB::Exception: Limit for rows or bytes to read exceeded, max bytes: 128.00 MiB, current bytes: 128.03 MiB: While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (TOO_MANY_BYTES) (version 26.3.32.14 (official build))"
+    }
+  ],
+  "table": "{\"rows\":200000,\"payloadBytes\":939}",
+  "settings": "{\"name\":\"optimize_move_to_prewhere_if_final\",\"value\":\"0\"}\n{\"name\":\"use_skip_indexes_if_final\",\"value\":\"1\"}\n{\"name\":\"enable_optimize_predicate_expression\",\"value\":\"1\"}",
+  "scenarios": [
+    "exporter/receiver clocks aligned plus200ms",
+    "exporter timestamp shuffled over10days; received timestamps ordered; EXPORTER_CLOCK_SKEW synthetic"
+  ],
+  "actualDDL": "CREATE TABLE synthetic_nat_perf.nat_skew\\n(\\n    `organization_id` String,\\n    `device_id` String,\\n    `event_id` FixedString(64),\\n    `exported_at` DateTime64(3, \\'UTC\\'),\\n    `received_at` DateTime64(3, \\'UTC\\'),\\n    `private_ip` String,\\n    `public_ip` String,\\n    `protocol` Int16,\\n    `payload` String,\\n    `revision` UInt64,\\n    INDEX nat_received_at received_at TYPE minmax GRANULARITY 1,\\n    INDEX nat_private_ip private_ip TYPE bloom_filter(0.01) GRANULARITY 1,\\n    INDEX nat_public_ip public_ip TYPE bloom_filter(0.01) GRANULARITY 1\\n)\\nENGINE = ReplacingMergeTree(revision)\\nPARTITION BY toYYYYMM(exported_at)\\nORDER BY (organization_id, device_id, exported_at, event_id)\\nSETTINGS index_granularity = 256",
+  "twoPhase256": [
+    {
+      "queryId": "synthetic-nat-256-1h",
+      "sql": "WITH chosen AS (SELECT exported_at,event_id FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T23:00:00Z') AND received_at<parseDateTime64BestEffort('2026-09-07T00:00:00Z') ORDER BY received_at DESC,event_id DESC LIMIT 101) SELECT payload FROM synthetic_nat_perf.nat_skew FINAL PREWHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND (exported_at,event_id) IN (SELECT exported_at,event_id FROM chosen) ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow",
+      "exitCode": 0,
+      "wallSeconds": 0.633,
+      "resultRows": 101,
+      "error": "",
+      "exactIdsMatch": true
+    },
+    {
+      "queryId": "synthetic-nat-256-24h",
+      "sql": "WITH chosen AS (SELECT exported_at,event_id FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T00:00:00Z') AND received_at<parseDateTime64BestEffort('2026-09-07T00:00:00Z') ORDER BY received_at DESC,event_id DESC LIMIT 101) SELECT payload FROM synthetic_nat_perf.nat_skew FINAL PREWHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND (exported_at,event_id) IN (SELECT exported_at,event_id FROM chosen) ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow",
+      "exitCode": 0,
+      "wallSeconds": 0.6,
+      "resultRows": 101,
+      "error": "",
+      "exactIdsMatch": true
+    }
+  ],
+  "replayEarliest": {
+    "queryId": "synthetic-nat-256-replay-wide",
+    "sql": "WITH chosen AS (SELECT exported_at,event_id FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-06T23:59:45Z') AND received_at<parseDateTime64BestEffort('2026-09-07T00:01:30Z') ORDER BY received_at DESC,event_id DESC LIMIT 101) SELECT payload FROM synthetic_nat_perf.nat_skew FINAL PREWHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND (exported_at,event_id) IN (SELECT exported_at,event_id FROM chosen) ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow",
+    "exitCode": 0,
+    "wallSeconds": 0.611,
+    "resultRows": 2,
+    "error": "",
+    "exactIdsMatch": true
+  },
+  "replayNarrow": {
+    "queryId": "synthetic-nat-256-replay-narrow",
+    "sql": "WITH chosen AS (SELECT exported_at,event_id FROM synthetic_nat_perf.nat_skew FINAL WHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND received_at>=parseDateTime64BestEffort('2026-09-07T00:00:30Z') AND received_at<parseDateTime64BestEffort('2026-09-07T00:01:30Z') ORDER BY received_at DESC,event_id DESC LIMIT 101) SELECT payload FROM synthetic_nat_perf.nat_skew FINAL PREWHERE organization_id='synthetic-perf' AND device_id='synthetic-router' AND (exported_at,event_id) IN (SELECT exported_at,event_id FROM chosen) ORDER BY received_at DESC,event_id DESC LIMIT 101 SETTINGS optimize_move_to_prewhere=0,max_execution_time=5,max_threads=2,max_rows_to_read=2000000,max_bytes_to_read=134217728,max_memory_usage=134217728,max_result_bytes=2097152,result_overflow_mode='throw' FORMAT JSONEachRow",
+    "exitCode": 0,
+    "wallSeconds": 0.568,
+    "resultRows": 0,
+    "error": "",
+    "exactIdsMatch": true
+  },
+  "queryLog256": [
+    {
+      "query_id": "synthetic-nat-256-1h",
+      "type": "QueryFinish",
+      "read_rows": 394213,
+      "read_bytes": 55968932,
+      "memory_usage": 713984,
+      "query_duration_ms": 68,
+      "result_rows": 101,
+      "exception_code": 0
+    },
+    {
+      "query_id": "synthetic-nat-256-24h",
+      "type": "QueryFinish",
+      "read_rows": 400000,
+      "read_bytes": 56637040,
+      "memory_usage": 712352,
+      "query_duration_ms": 34,
+      "result_rows": 101,
+      "exception_code": 0
+    },
+    {
+      "query_id": "synthetic-nat-256-replay-wide",
+      "type": "QueryFinish",
+      "read_rows": 201793,
+      "read_bytes": 21691247,
+      "memory_usage": 2429381,
+      "query_duration_ms": 40,
+      "result_rows": 2,
+      "exception_code": 0
+    },
+    {
+      "query_id": "synthetic-nat-256-replay-narrow",
+      "type": "QueryFinish",
+      "read_rows": 200513,
+      "read_bytes": 21264710,
+      "memory_usage": 532969,
+      "query_duration_ms": 22,
+      "result_rows": 0,
+      "exception_code": 0
+    }
+  ],
+  "finalRowCounts": "{\"physicalRows\":200000,\"eventIds\":199999}",
+  "emptyTableAlter": {
+    "createCode": 0,
+    "alterCode": 216,
+    "error": "00000017ea1992\n11. main @ 0x000000000ff1500a\n12. __pow_finite @ 0x0000000000029d90\n13. __libc_start_main @ 0x0000000000029e40\n14. _start @ 0x00000000099b906e\n (version 26.3.32.14 (official build))\nReceived exception from server (version 26.3.32):\nCode: 472. DB::Exception: Received from localhost:9000. DB::Exception: Setting 'index_granularity' is readonly for storage 'ReplacingMergeTree'. (READONLY_SETTING)\n(query: ALTER TABLE synthetic_nat_perf.empty_alter MODIFY SETTING index_granularity=256)\n",
+    "ddl": "CREATE TABLE synthetic_nat_perf.empty_alter\\n(\\n    `organization_id` String,\\n    `device_id` String,\\n    `event_id` FixedString(64),\\n    `exported_at` DateTime64(3, \\'UTC\\'),\\n    `received_at` DateTime64(3, \\'UTC\\'),\\n    `private_ip` String,\\n    `public_ip` String,\\n    `protocol` Int16,\\n    `payload` String,\\n    `revision` UInt64,\\n    INDEX nat_received_at received_at TYPE minmax GRANULARITY 1,\\n    INDEX nat_private_ip private_ip TYPE bloom_filter(0.01) GRANULARITY 1,\\n    INDEX nat_public_ip public_ip TYPE bloom_filter(0.01) GRANULARITY 1\\n)\\nENGINE = ReplacingMergeTree(revision)\\nPARTITION BY toYYYYMM(exported_at)\\nORDER BY (organization_id, device_id, exported_at, event_id)\\nSETTINGS index_granularity = 8192"
+  },
+  "replayWinnerReceivedAt": "2026-09-06T23:59:51.560Z",
+  "replayWinnerMatchesEarliest": true,
+  "containerRemoved": true,
+  "granularity": 256
+}

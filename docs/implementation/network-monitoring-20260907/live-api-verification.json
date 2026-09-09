@@ -1,0 +1,763 @@
+{
+  "verifiedAt": "2026-09-07T05:52:23.371445+00:00",
+  "hosts": [
+    {
+      "baseUrl": "http://192.168.4.62",
+      "network": [
+        {
+          "deviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "status": "PARTIAL",
+          "ports": 81,
+          "sensors": 2,
+          "lastSuccessAt": "2026-09-07T05:51:20.401553Z",
+          "qualityFlags": [
+            "SNMP_ENTITY_LIMIT",
+            "SNMP_WEAK_INTERFACE_IDENTITY"
+          ],
+          "metricNames": [
+            "bandwidth_rx_bps",
+            "bandwidth_tx_bps",
+            "cpu_percent",
+            "memory_percent"
+          ],
+          "interfaceCoverage": "NO_INTERFACE_TRUNCATION_REPORTED",
+          "aggregateAvailability": {
+            "cpu_percent": true,
+            "memory_percent": true
+          },
+          "metricHistory": [
+            {
+              "windowHours": 1,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 30.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7240349.78553388,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7612149.32493574,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 30.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7240349.78553388,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7612149.32493574,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            }
+          ]
+        },
+        {
+          "deviceId": "a720db9a-6439-4b2a-9afa-772efa391976",
+          "status": "PARTIAL",
+          "ports": 15,
+          "sensors": 17,
+          "lastSuccessAt": "2026-09-07T05:51:19.294612Z",
+          "qualityFlags": [
+            "SNMP_ENTITY_LIMIT",
+            "SNMP_AGENT_ERROR",
+            "SNMP_WEAK_INTERFACE_IDENTITY",
+            "SNMP_SENSOR_LIMIT"
+          ],
+          "metricNames": [
+            "bandwidth_rx_bps",
+            "bandwidth_tx_bps",
+            "cpu_percent",
+            "memory_percent"
+          ],
+          "interfaceCoverage": "NO_INTERFACE_TRUNCATION_REPORTED",
+          "aggregateAvailability": {
+            "cpu_percent": true,
+            "memory_percent": true
+          },
+          "metricHistory": [
+            {
+              "windowHours": 1,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 1.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 25.58873340795,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6783750.95141766,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 66,
+              "validPoints": 66,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6799481.43466028,
+              "coverage": 0.5641025641025641,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 1.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 25.58873340795,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6783750.95141766,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 5,
+              "validPoints": 5,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6799481.43466028,
+              "coverage": 0.04201680672268908,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            }
+          ]
+        }
+      ],
+      "application": {
+        "revision": 1,
+        "enabled": true,
+        "status": "PARTIAL",
+        "lastRowCount": 512,
+        "interfaceIndices": [
+          8,
+          9
+        ],
+        "lastSuccessAt": "2026-09-07T05:51:58.413957Z",
+        "qualityFlags": [
+          "NBAR_ROW_LIMIT"
+        ],
+        "interfaceEvidence": [
+          {
+            "interfaceIndex": 8,
+            "direction": "IN",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 8,
+            "direction": "OUT",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 9,
+            "direction": "IN",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 9,
+            "direction": "OUT",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          }
+        ]
+      },
+      "nat": {
+        "revision": 1,
+        "enabled": true,
+        "status": "RECEIVING",
+        "sourceAddress": "192.168.253.1",
+        "received": 939,
+        "accepted": 16192,
+        "persisted": 16212,
+        "dropped": 0,
+        "parseErrors": 0,
+        "unknownTemplates": 136,
+        "sequenceGaps": 0,
+        "lastPacketAt": "2026-09-07T05:52:24.141794Z",
+        "lastPersistedAt": "2026-09-07T05:52:25.283237Z",
+        "qualityFlags": [
+          "UDP_UNAUTHENTICATED",
+          "COMPLETENESS_NOT_GUARANTEED"
+        ],
+        "currentErrorPresent": false,
+        "acceptance": "LIVE"
+      },
+      "querySample": {
+        "applicationRows": 100,
+        "applications": 72,
+        "derivedRateRows": 100,
+        "natRows": 100,
+        "natTypes": [
+          "CREATE",
+          "DELETE"
+        ],
+        "natTemplates": [
+          256
+        ]
+      }
+    },
+    {
+      "baseUrl": "http://192.168.4.63",
+      "network": [
+        {
+          "deviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "status": "PARTIAL",
+          "ports": 81,
+          "sensors": 2,
+          "lastSuccessAt": "2026-09-07T05:51:20.401553Z",
+          "qualityFlags": [
+            "SNMP_ENTITY_LIMIT",
+            "SNMP_WEAK_INTERFACE_IDENTITY"
+          ],
+          "metricNames": [
+            "bandwidth_rx_bps",
+            "bandwidth_tx_bps",
+            "cpu_percent",
+            "memory_percent"
+          ],
+          "interfaceCoverage": "NO_INTERFACE_TRUNCATION_REPORTED",
+          "aggregateAvailability": {
+            "cpu_percent": true,
+            "memory_percent": true
+          },
+          "metricHistory": [
+            {
+              "windowHours": 1,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 30.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7240349.78553388,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7612149.32493574,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 30.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7240349.78553388,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 7612149.32493574,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            }
+          ]
+        },
+        {
+          "deviceId": "a720db9a-6439-4b2a-9afa-772efa391976",
+          "status": "PARTIAL",
+          "ports": 15,
+          "sensors": 17,
+          "lastSuccessAt": "2026-09-07T05:51:19.294612Z",
+          "qualityFlags": [
+            "SNMP_ENTITY_LIMIT",
+            "SNMP_AGENT_ERROR",
+            "SNMP_WEAK_INTERFACE_IDENTITY",
+            "SNMP_SENSOR_LIMIT"
+          ],
+          "metricNames": [
+            "bandwidth_rx_bps",
+            "bandwidth_tx_bps",
+            "cpu_percent",
+            "memory_percent"
+          ],
+          "interfaceCoverage": "NO_INTERFACE_TRUNCATION_REPORTED",
+          "aggregateAvailability": {
+            "cpu_percent": true,
+            "memory_percent": true
+          },
+          "metricHistory": [
+            {
+              "windowHours": 1,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 1.0,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 23,
+              "validPoints": 23,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 25.58873340795,
+              "coverage": 0.19658119658119658,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 110,
+              "validPoints": 110,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6783750.95141766,
+              "coverage": 0.9401709401709402,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 1,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 66,
+              "validPoints": 66,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6799481.43466028,
+              "coverage": 0.5641025641025641,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "cpu_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 1.0,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "memory_percent",
+              "unit": "%",
+              "source": "VICTORIAMETRICS",
+              "points": 1,
+              "validPoints": 1,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 25.58873340795,
+              "coverage": 0.008403361344537815,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_rx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 6,
+              "validPoints": 6,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6783750.95141766,
+              "coverage": 0.05042016806722689,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            },
+            {
+              "windowHours": 24,
+              "metric": "bandwidth_tx_bps",
+              "unit": "bps",
+              "source": "VICTORIAMETRICS",
+              "points": 5,
+              "validPoints": 5,
+              "latestAt": "2026-09-07T05:52:23.371Z",
+              "latestValue": 6799481.43466028,
+              "coverage": 0.04201680672268908,
+              "qualityFlags": [
+                "NATIVE_REVISION_UNAVAILABLE"
+              ]
+            }
+          ]
+        }
+      ],
+      "application": {
+        "revision": 1,
+        "enabled": true,
+        "status": "PARTIAL",
+        "lastRowCount": 512,
+        "interfaceIndices": [
+          8,
+          9
+        ],
+        "lastSuccessAt": "2026-09-07T05:51:58.413957Z",
+        "qualityFlags": [
+          "NBAR_ROW_LIMIT"
+        ],
+        "interfaceEvidence": [
+          {
+            "interfaceIndex": 8,
+            "direction": "IN",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 8,
+            "direction": "OUT",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 9,
+            "direction": "IN",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          },
+          {
+            "interfaceIndex": 9,
+            "direction": "OUT",
+            "rows": 100,
+            "freshDerivedRows": 100,
+            "latestDerivedAt": "2026-09-07T05:51:58.206078158Z",
+            "applications": 100,
+            "qualityFlags": [
+              "NBAR_ROW_LIMIT"
+            ]
+          }
+        ]
+      },
+      "nat": {
+        "revision": 1,
+        "enabled": true,
+        "status": "RECEIVING",
+        "sourceAddress": "192.168.253.1",
+        "received": 939,
+        "accepted": 16192,
+        "persisted": 16293,
+        "dropped": 0,
+        "parseErrors": 0,
+        "unknownTemplates": 136,
+        "sequenceGaps": 0,
+        "lastPacketAt": "2026-09-07T05:52:24.141794Z",
+        "lastPersistedAt": "2026-09-07T05:52:27.281851Z",
+        "qualityFlags": [
+          "UDP_UNAUTHENTICATED",
+          "COMPLETENESS_NOT_GUARANTEED"
+        ],
+        "currentErrorPresent": false,
+        "acceptance": "LIVE"
+      },
+      "querySample": {
+        "applicationRows": 100,
+        "applications": 72,
+        "derivedRateRows": 100,
+        "natRows": 100,
+        "natTypes": [
+          "CREATE",
+          "DELETE"
+        ],
+        "natTemplates": [
+          256
+        ]
+      }
+    }
+  ],
+  "boundedReadLoad": {
+    "requests": 40,
+    "concurrency": 8,
+    "errors": 0,
+    "p50Millis": 115.24000000000001,
+    "p95Millis": 254.34,
+    "maxMillis": 270.94
+  },
+  "captureBoundary": "Observed UDP events; completeness, pre-enablement history and identity attribution are not asserted.",
+  "deploymentBoundary": "Both LAN HTTP entrypoints were read; pod placement/image readiness and failover are checked separately.",
+  "switchBoundary": "This read-only run observes separate enabled states; independent toggle behavior is covered by integration tests.",
+  "historyBoundary": "Nonempty fresh VM windows are verified; full 24-hour coverage and ClickHouse interface heatmaps are not asserted."
+}

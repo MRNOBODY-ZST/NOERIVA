@@ -1,0 +1,2915 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-06",
+  "authority": "docs/source-v5/NOERIVA_MASTER_PROMPT_V5.md",
+  "status": "Clarity workspace, bounded typed workflows and read-only SNMP/Redfish device access; partial implementation, protocol simulators tested, hardware pending; no SUPPORTED or DEVICE_VERIFIED claims",
+  "axes": {
+    "roadmapTier": [
+      "MVP",
+      "PLANNED",
+      "FUTURE",
+      "OUT_OF_SCOPE"
+    ],
+    "maturity": [
+      "PLANNED",
+      "DESIGNED",
+      "IN_DEVELOPMENT",
+      "EXPERIMENTAL",
+      "SUPPORTED",
+      "DEPRECATED",
+      "UNSUPPORTED"
+    ],
+    "coverage": [
+      "NONE",
+      "PARTIAL",
+      "FULL"
+    ],
+    "verification": [
+      "NOT_TESTED",
+      "FIXTURE_TESTED",
+      "INTEGRATION_TESTED",
+      "DEVICE_VERIFIED"
+    ]
+  },
+  "capabilities": [
+    {
+      "id": "inventory",
+      "capability": "控制面设备与身份库存",
+      "assetTypes": [
+        "所有设备"
+      ],
+      "dataSources": [
+        "REST / MySQL"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "REST / MySQL",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Device",
+        "AssetIdentity",
+        "DeviceEndpoint"
+      ],
+      "storageDestinations": [
+        "MySQL"
+      ],
+      "uiSurface": "资产目录、设备资料及接入与采集",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No automated host/BMC asset merge or full lifecycle/discovery inventory.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "DeviceAccessIntegrationTest: real MySQL tenant isolation, independently revised inventory, encrypted credential storage, target/protocol binding and concurrent updates; frontend device-integration.test.ts checks request contracts and secret handling. Protocol and hardware verification remain separate.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Bounded organization-scoped inventory, stable UUIDs, manual registration and editable metadata with inventoryRevision independent of telemetry revisions.",
+        "ADMIN/OPERATOR metadata editing; only ADMIN manages independent SNMP/Redfish connection slots and actions. Management-address edits do not retarget saved credentials.",
+        "The Clarity device access tab provides saved-configuration tests, one-shot collection, periodic intent and safe current-result/SSE views; observed identity does not overwrite registered metadata."
+      ],
+      "implementedCollectionMethod": "Authorized REST management and read-only device connection control",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "authentication",
+      "capability": "登录、会话和权限边界",
+      "assetTypes": [
+        "平台用户"
+      ],
+      "dataSources": [
+        "Spring Security / bearer / Basic bootstrap"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Spring Security / bearer / Basic bootstrap",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "User",
+        "Role",
+        "Permission",
+        "Session"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "Redis sessions"
+      ],
+      "uiSurface": "登录与会话",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No SSO, field-level/site-level authorization UI, automatic key rotation or external secrets manager integration.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "DeviceAccessIntegrationTest and DeviceSafetyTest cover tenant/slot-bound authenticated encryption and credential isolation; frontend contract tests cover role-gated endpoints, no secret echo/persistence and Authorization-header SSE.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Existing organization-scoped sessions and roles; ADMIN-only connection settings, write-only encrypted secrets and test/collect/state actions; ADMIN/OPERATOR metadata editing.",
+        "Safe collection views and authenticated fetch SSE are readable by ADMIN/OPERATOR/VIEWER without connection usernames or secrets."
+      ],
+      "implementedCollectionMethod": "Authenticated REST and header-authenticated SSE; AES-256-GCM credential storage",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "current-state",
+      "capability": "独立来源当前状态与新鲜度",
+      "assetTypes": [
+        "设备、主机、BMC"
+      ],
+      "dataSources": [
+        "低频版本化状态事件"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "低频版本化状态事件",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Observation",
+        "SourceState",
+        "DeviceSummary"
+      ],
+      "storageDestinations": [
+        "MySQL checkpoints",
+        "Redis cache"
+      ],
+      "uiSurface": "运行总览与监测来源目录",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Source-current values and device-level historical metric queries have distinct scopes; no full OEM or trap-driven state ingestion.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Workspace HTTP/MySQL integration tests plus DeviceAccessIntegrationTest metric ownership and lease/failure preservation; real UDP/HTTPS simulators verify protocol readings, not physical hardware.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Bounded workspace projections preserve organization, device/source identity and freshness; totals are not inferred from a page.",
+        "Saved-configuration test readings remain in safe collection state; successful one-shot/periodic publication uses network for SNMP and bmc for Redfish. Failed reads retain the original last-success timestamp.",
+        "Named historical metrics have one publishing slot per device/metric; publishedMetricIds distinguishes observed values from the actual published projection."
+      ],
+      "implementedCollectionMethod": "Read-only protocol collection plus existing state observation pipeline",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "interfaces",
+      "capability": "接口元数据与设备归属",
+      "assetTypes": [
+        "网络接口"
+      ],
+      "dataSources": [
+        "REST 注册"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "REST 注册",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Interface"
+      ],
+      "storageDestinations": [
+        "MySQL"
+      ],
+      "uiSurface": "网络接口目录与设备接口",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No LLDP/CDP, VLAN/LAG/STP/BGP discovery or complete topology/physical-port identity reconciliation.",
+        "Current bandwidth summary can include overlapping logical and physical interfaces; it is not deduplicated site throughput.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "DeviceAccessIntegrationTest covers source ownership and complete versus partial interface snapshots; SnmpDriverTest exercises real UDP sparse tables, stable identity, unsigned counters and limits; DeviceCountersTest covers continuity and missing-value rules.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Bounded organization/device-scoped REST and workspace interface inventory, plus SNMP IF-MIB upserts with source_id=network.",
+        "Stable port IDs derive from device/slot scope and observed interface identity, not ifIndex alone. Nullable capacity/counters remain missing; raw Counter64 values retain decimal-string precision.",
+        "Complete interface snapshots may mark missing same-source ports NOT_PRESENT; partial reads preserve previously known inventory. Heatmap and repair use the authorized interface source_id."
+      ],
+      "implementedCollectionMethod": "Manual REST registration and bounded read-only SNMP IF-MIB collection",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "state-ingest",
+      "capability": "离散状态事件接入与可靠处理",
+      "assetTypes": [
+        "已注册采集源"
+      ],
+      "dataSources": [
+        "受权 HTTP batch → Kafka"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "受权 HTTP batch → Kafka",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "IngestBatch",
+        "Envelope",
+        "DeviceHealthEvent"
+      ],
+      "storageDestinations": [
+        "Kafka",
+        "ClickHouse",
+        "MySQL checkpoint"
+      ],
+      "uiSurface": "活动与状态",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification.",
+        "Current low-volume state lane is JSON. High-volume Protobuf/Streams/official sink pipeline remains designed, not claimed complete."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "Automated fixture/API/configuration tests for the implemented partial slice; see final verification report.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "outbox",
+      "capability": "事务变更与 outbox",
+      "assetTypes": [
+        "控制面聚合"
+      ],
+      "dataSources": [
+        "MySQL transaction → Kafka"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "MySQL transaction → Kafka",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "ControlChange",
+        "OutboxRecord"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "Kafka"
+      ],
+      "uiSurface": "控制操作已提交结果",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "Automated fixture/API/configuration tests for the implemented partial slice; see final verification report.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "metric-query",
+      "capability": "命名指标有界范围查询",
+      "assetTypes": [
+        "设备、主机、BMC"
+      ],
+      "dataSources": [
+        "VictoriaMetrics query_range"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "VictoriaMetrics query_range",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "MetricDefinition",
+        "MetricPoint",
+        "MetricResponse"
+      ],
+      "storageDestinations": [
+        "VictoriaMetrics"
+      ],
+      "uiSurface": "设备监测曲线",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Automated tests plus authorized local COMPACT engine integration; synthetic sources only.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "counter-rollup",
+      "capability": "可修正的带宽计数器汇总",
+      "assetTypes": [
+        "网络接口"
+      ],
+      "dataSources": [
+        "VictoriaMetrics raw export → Java worker"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "VictoriaMetrics raw export → Java worker",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "CounterSample",
+        "RollupBucket",
+        "RollupKey"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "MySQL progress"
+      ],
+      "uiSurface": "带宽汇总数据",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification.",
+        "Only five-minute bandwidth buckets and seven-day interface view; hourly/gauge layers and unattended old-window repair are not certified."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Automated tests plus authorized local COMPACT engine integration; synthetic sources only.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "bandwidth-heatmap",
+      "capability": "七日时区带宽热力图",
+      "assetTypes": [
+        "网络接口"
+      ],
+      "dataSources": [
+        "版本化 5 分钟桶"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "版本化 5 分钟桶",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "HeatmapResponse",
+        "HeatmapCell"
+      ],
+      "storageDestinations": [
+        "ClickHouse"
+      ],
+      "uiSurface": "7×24 热力图与单格检查",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification.",
+        "Only five-minute bandwidth buckets and seven-day interface view; hourly/gauge layers and unattended old-window repair are not certified."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Automated tests plus authorized local COMPACT engine integration; synthetic sources only.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "rollup-repair-jobs",
+      "capability": "迟到数据的有界历史修复任务",
+      "assetTypes": [
+        "网络接口"
+      ],
+      "dataSources": [
+        "Administrator REST request; durable MySQL jobs; bounded RollupWorker"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Explicit administrator-requested historical window",
+      "mode": "ASYNCHRONOUS_JOB",
+      "normalizedContracts": [
+        "RollupJobs.Request",
+        "RollupJobs.Job",
+        "RollupKey"
+      ],
+      "storageDestinations": [
+        "MySQL job/audit/lease/progress",
+        "ClickHouse replacement snapshots"
+      ],
+      "uiSurface": "Authenticated query-jobs API; no dedicated console job screen yet",
+      "alertSupport": "Explicit FAILED/PENDING status and bounded error code; no alert notification integration",
+      "auditTraceSupport": "Same-transaction audited job creation; scoped reads",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Repair only, not exports; <=1day/window; explicit worker enablement; automatic discovery of every historical dirty window remains future work."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Nine automated tests, including five real MySQL8.4.11 Testcontainers tests; query worker separately tested against actual VM/ClickHouse.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "topology-browse",
+      "capability": "有界设备连接浏览",
+      "assetTypes": [
+        "设备与网络接口"
+      ],
+      "dataSources": [
+        "已存连接元数据 / synthetic fixtures"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "已存连接元数据 / synthetic fixtures",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Topology",
+        "Node",
+        "Edge"
+      ],
+      "storageDestinations": [
+        "MySQL"
+      ],
+      "uiSurface": "ECharts 连接浏览",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "Automated fixture/API/configuration tests for the implemented partial slice; see final verification report.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "basic-alerts",
+      "capability": "状态告警与乐观锁确认",
+      "assetTypes": [
+        "设备与采集来源"
+      ],
+      "dataSources": [
+        "Source health transition"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Source health transition",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Alert",
+        "AlertAcknowledged"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "outbox"
+      ],
+      "uiSurface": "异常列表与确认",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "Automated fixture/API/configuration tests for the implemented partial slice; see final verification report.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "collectors-metadata",
+      "capability": "采集器库存与状态",
+      "assetTypes": [
+        "采集器、站点"
+      ],
+      "dataSources": [
+        "REST / current source events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "REST / current source events",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "Collector",
+        "CollectorAssignment"
+      ],
+      "storageDestinations": [
+        "MySQL"
+      ],
+      "uiSurface": "采集器 Worker 心跳、设备接入运行状态",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No external Edge enrollment/mTLS task API, general heartbeat write API, local durable spool or per-worker-replica inventory.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "DeviceAccessIntegrationTest covers due/lease/version behavior; protocol tests use UDP/HTTPS simulators. Worker heartbeat and browser runtime acceptance are reported separately by the deployment verification, not assumed from fixtures.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Existing bounded collector inventory plus built-in device-poller Worker heartbeats and last successful scheduled collection time.",
+        "The device Worker performs enabled SNMP/Redfish polling using database leases and version fencing; device-level actions live in the access tab, separate from collector process status.",
+        "The built-in worker has no local spool: 0/0 queue capacity is shown as not applicable, not proof of an empty validated queue."
+      ],
+      "implementedCollectionMethod": "Internal Worker heartbeat projection and bounded collector inventory query",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "compact-deployment",
+      "capability": "COMPACT 本地验证部署",
+      "assetTypes": [
+        "应用与数据服务"
+      ],
+      "dataSources": [
+        "OCI / Compose"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "OCI / Compose",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "DeploymentProfile"
+      ],
+      "storageDestinations": [
+        "局部持久卷"
+      ],
+      "uiSurface": "本地运行与健康端点",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 0,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "Automated tests plus authorized local COMPACT engine integration; synthetic sources only.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 0",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "kubernetes-packaging",
+      "capability": "Kubernetes / Helm 应用打包",
+      "assetTypes": [
+        "应用部署"
+      ],
+      "dataSources": [
+        "Helm / Kubernetes API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Helm / Kubernetes API",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "DeploymentProfile"
+      ],
+      "storageDestinations": [
+        "外部或受管理数据服务"
+      ],
+      "uiSurface": "运维部署配置",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Current control/state provenance only; no proof of cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 0,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "Helm/manifest verification for deployment artifacts; a Kubernetes production cluster has not been deployed by this slice.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 0",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "id": "physical-servers",
+      "capability": "物理服务器监控与关联",
+      "assetTypes": [
+        "Physical servers"
+      ],
+      "dataSources": [
+        "Redfish / exporter / inventory adapters"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Redfish / exporter / inventory adapters",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "Host",
+        "Bmc",
+        "HardwareComponent"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "设备详情接入与采集、监测与传感器",
+      "alertSupport": "Published observed health can use the existing state-alert pipeline; no complete numeric-rule, notification, Trap or vendor event integration.",
+      "auditTraceSupport": "Device management and connection/actions preserve authorized actor, organization and revision; safe readings retain source references and observation time. Not physical-device certification or cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No operating-system/exporter adapter, automatic host-to-BMC relationship verification, private IPMI or full hardware component lifecycle.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "SnmpDriverTest: real UDP/SNMP4J protocol simulator; RedfishDriverTest: local HTTPS protocol simulator; DeviceSafetyTest and DeviceCountersTest: bounded safety and semantic fixtures. All hardware identity and readings are synthetic. See docs/devices/DEVICE-SUPPORT.md and the two protocol research documents.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Read-only BMC-based standard Redfish inventory/health/sensors with generic SNMP fallback; identity remains separate from manually registered asset metadata.",
+        "Hardware readings, safe runtime state and successful supported metric publication are visible through device access and monitoring pages."
+      ],
+      "implementedCollectionMethod": "Standard Redfish HTTPS and generic SNMP v2c/v3 polling",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "operating-systems",
+      "capability": "操作系统监测",
+      "assetTypes": [
+        "Operating systems"
+      ],
+      "dataSources": [
+        "node_exporter / OpenTelemetry hostmetrics"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "node_exporter / OpenTelemetry hostmetrics",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "OperatingSystemInstance",
+        "HostMetric"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics"
+      ],
+      "uiSurface": "主机监测",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "virtual-machines",
+      "capability": "虚拟机监控",
+      "assetTypes": [
+        "Virtual machines"
+      ],
+      "dataSources": [
+        "已批准虚拟化 API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "已批准虚拟化 API",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "VirtualMachine",
+        "HostMetric"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics"
+      ],
+      "uiSurface": "虚拟化资源详情",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "hypervisors",
+      "capability": "虚拟化宿主与集群",
+      "assetTypes": [
+        "Hypervisors"
+      ],
+      "dataSources": [
+        "已批准 hypervisor API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "已批准 hypervisor API",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "Hypervisor",
+        "VirtualMachine"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics"
+      ],
+      "uiSurface": "虚拟化视图",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "bmcs",
+      "capability": "带外管理与硬件健康",
+      "assetTypes": [
+        "BMCs"
+      ],
+      "dataSources": [
+        "Generic Redfish; IPMI compatibility later"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Generic Redfish; IPMI compatibility later",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "Bmc",
+        "SensorDefinition",
+        "BmcEvent"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "设备接入、BMC 身份、温度/风扇/电源读数",
+      "alertSupport": "Published observed health can use the existing state-alert pipeline; no complete numeric-rule, notification, Trap or vendor event integration.",
+      "auditTraceSupport": "Device management and connection/actions preserve authorized actor, organization and revision; safe readings retain source references and observation time. Not physical-device certification or cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No full OEM coverage, IPMI, Redfish SessionService authentication, EventService subscriptions or remote power/configuration actions.",
+        "Resource availability, TLS certificates and algorithm support require per-model/firmware hardware acceptance.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "SnmpDriverTest: real UDP/SNMP4J protocol simulator; RedfishDriverTest: local HTTPS protocol simulator; DeviceSafetyTest and DeviceCountersTest: bounded safety and semantic fixtures. All hardware identity and readings are synthetic. See docs/devices/DEVICE-SUPPORT.md and the two protocol research documents.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Standard Redfish service-root discovery, linked Systems/Managers/Chassis identity/health, old Thermal/Power and implemented modern Sensor/thermal/power subsystem resources.",
+        "Dell/Huawei/Inspur/H3C manufacturer profiles and generic fallback; family evidence is separate from profile labels. Legacy H3C string member links retain a quality flag.",
+        "Maximum of observed temperature sensors; whole-device power only from one unambiguous complete system/chassis total; fan RPM/percent, PSU inputs/outputs and null health-only sensors remain distinct.",
+        "SNMP BMC candidates use only proven generic MIB reading paths; iMana does not imply Redfish support."
+      ],
+      "implementedCollectionMethod": "Read-only standard Redfish HTTPS polling; generic SNMP fallback",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "routers",
+      "capability": "路由器深度监控",
+      "assetTypes": [
+        "Routers"
+      ],
+      "dataSources": [
+        "SNMPv3 / traps / NETCONF / gNMI"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SNMPv3 / traps / NETCONF / gNMI",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "NetworkDevice",
+        "RoutingInstance",
+        "RoutingNeighbor"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "设备接入、接口目录及监测来源",
+      "alertSupport": "Published observed health can use the existing state-alert pipeline; no complete numeric-rule, notification, Trap or vendor event integration.",
+      "auditTraceSupport": "Device management and connection/actions preserve authorized actor, organization and revision; safe readings retain source references and observation time. Not physical-device certification or cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No routing neighbors/VRF/BGP, NETCONF/gNMI, Trap/Inform or complete router health adapter.",
+        "No H3C historical 2011.10 mapping, generic HOST-RESOURCES CPU/memory or guessed Dell private sensor units.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "SnmpDriverTest: real UDP/SNMP4J protocol simulator; RedfishDriverTest: local HTTPS protocol simulator; DeviceSafetyTest and DeviceCountersTest: bounded safety and semantic fixtures. All hardware identity and readings are synthetic. See docs/devices/DEVICE-SUPPORT.md and the two protocol research documents.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Read-only SNMPv2c/v3 system/ENTITY/IF-MIB and reviewed sensor columns, with explicit user-selected algorithms and bounded reads.",
+        "Cisco PROCESS/entity sensors, Huawei VRP entity CPU/memory/temperature and H3C 25506 entity CPU/memory are implemented where the actual objects are readable; Dell OS9 remains generic.",
+        "Enterprise root and description matching produce vendor/family candidates, never brand-wide verified hardware support."
+      ],
+      "implementedCollectionMethod": "Read-only SNMP GET/GETBULK polling",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "switches",
+      "capability": "二三层交换机监控",
+      "assetTypes": [
+        "Layer-2/Layer-3 switches"
+      ],
+      "dataSources": [
+        "SNMPv3 / LLDP / CDP"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SNMPv3 / LLDP / CDP",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "Interface",
+        "VLAN",
+        "LAG",
+        "TopologyObservationEvent"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "设备接入、接口与带宽、监测来源",
+      "alertSupport": "Published observed health can use the existing state-alert pipeline; no complete numeric-rule, notification, Trap or vendor event integration.",
+      "auditTraceSupport": "Device management and connection/actions preserve authorized actor, organization and revision; safe readings retain source references and observation time. Not physical-device certification or cross-domain attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No LLDP/CDP, VLAN, LAG/STP or full layer-2/3 topology discovery.",
+        "Counter continuity/width/capacity limitations remain explicit; no H3C historical 2011.10 mapping.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "SnmpDriverTest: real UDP/SNMP4J protocol simulator; RedfishDriverTest: local HTTPS protocol simulator; DeviceSafetyTest and DeviceCountersTest: bounded safety and semantic fixtures. All hardware identity and readings are synthetic. See docs/devices/DEVICE-SUPPORT.md and the two protocol research documents.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Read-only SNMPv2c/v3 system/ENTITY/IF-MIB and reviewed sensor columns, with explicit user-selected algorithms and bounded reads.",
+        "Cisco PROCESS/entity sensors, Huawei VRP entity CPU/memory/temperature and H3C 25506 entity CPU/memory are implemented where the actual objects are readable; Dell OS9 remains generic.",
+        "Enterprise root and description matching produce vendor/family candidates, never brand-wide verified hardware support."
+      ],
+      "implementedCollectionMethod": "Read-only SNMP GET/GETBULK polling",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit",
+        "VictoriaMetrics and state/event pipeline for successfully published observations"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "firewall-nat-devices",
+      "capability": "防火墙与 NAT 网关健康",
+      "assetTypes": [
+        "Firewalls/NAT gateways"
+      ],
+      "dataSources": [
+        "SNMPv3 / vendor API / Syslog"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SNMPv3 / vendor API / Syslog",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "FirewallSessionEvent",
+        "NatPool",
+        "NatRuleMetadata"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "防火墙与 NAT 健康",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "load-balancers",
+      "capability": "负载均衡设备",
+      "assetTypes": [
+        "Load balancers"
+      ],
+      "dataSources": [
+        "厂商 API / SNMPv3 / exporter"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "厂商 API / SNMPv3 / exporter",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "LoadBalancer",
+        "VirtualService",
+        "HealthObservation"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "负载均衡资源页",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "wireless",
+      "capability": "无线控制器与接入点",
+      "assetTypes": [
+        "Wireless controllers/access points"
+      ],
+      "dataSources": [
+        "厂商 API / SNMPv3"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "厂商 API / SNMPv3",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "WirelessController",
+        "AccessPoint"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "无线资源与连接",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "kubernetes-resources",
+      "capability": "Kubernetes 资源与工作负载",
+      "assetTypes": [
+        "Kubernetes clusters and workloads"
+      ],
+      "dataSources": [
+        "Kubernetes API / kube-state-metrics / OTel"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Kubernetes API / kube-state-metrics / OTel",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "KubernetesCluster",
+        "KubernetesWorkload",
+        "TopologyObservationEvent"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "集群与工作负载",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 12,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 12",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "storage-systems",
+      "capability": "存储阵列、SAN 与 NAS",
+      "assetTypes": [
+        "Storage arrays/SAN/NAS"
+      ],
+      "dataSources": [
+        "厂商 API / SNMP / exporter"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "厂商 API / SNMP / exporter",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "StorageSystem",
+        "StoragePool"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "存储容量与健康",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "local-storage",
+      "capability": "RAID 与本地磁盘",
+      "assetTypes": [
+        "RAID controllers and local disks"
+      ],
+      "dataSources": [
+        "SMART / Redfish / vendor adapter"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SMART / Redfish / vendor adapter",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "RaidController",
+        "PhysicalDisk"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "存储部件与健康",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "power-environment",
+      "capability": "供电与环境监测",
+      "assetTypes": [
+        "UPS/PDU/environment sensors"
+      ],
+      "dataSources": [
+        "SNMPv3 / Modbus approved adapter / API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SNMPv3 / Modbus approved adapter / API",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "PowerDevice",
+        "EnvironmentalSensor"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "电力与环境",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 11,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 11",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "openwrt-appliances",
+      "capability": "OpenWrt / Linux 网络设备",
+      "assetTypes": [
+        "OpenWrt/Linux network appliances"
+      ],
+      "dataSources": [
+        "SNMPv3 / exporter / approved read-only API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "SNMPv3 / exporter / approved read-only API",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "NetworkDevice",
+        "Interface",
+        "Host"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "网络设备详情",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 3,
+      "roadmapTier": "MVP",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 3",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "application-observability",
+      "capability": "应用与服务可观测性",
+      "assetTypes": [
+        "Applications and services through OpenTelemetry/Prometheus/logs"
+      ],
+      "dataSources": [
+        "OTLP / Prometheus / logs"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "OTLP / Prometheus / logs",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "Service",
+        "Span",
+        "Metric",
+        "ApplicationEvent"
+      ],
+      "storageDestinations": [
+        "VictoriaMetrics",
+        "ClickHouse",
+        "selective Elasticsearch"
+      ],
+      "uiSurface": "应用依赖与诊断",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 12,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 12",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "internal-admin-audit",
+      "capability": "平台内部管理审计",
+      "assetTypes": [
+        "Noeriva internal administrative audit"
+      ],
+      "dataSources": [
+        "Application security/control events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Application security/control events",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "InternalAuditRecord"
+      ],
+      "storageDestinations": [
+        "MySQL control audit",
+        "later immutable archive"
+      ],
+      "uiSurface": "事件工作台、告警处置记录与证据访问历史",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Organization-scoped audit records for typed workbench actions; no automatic root-cause or physical device command attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Transactional workflow mutation audit, evidence read/export audit and actor-stamped incident notes."
+      ]
+    },
+    {
+      "id": "network-command-audit",
+      "capability": "网络设备登录与命令审计",
+      "assetTypes": [
+        "Network-device login and command audit"
+      ],
+      "dataSources": [
+        "Syslog / TACACS+ / vendor event"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Syslog / TACACS+ / vendor event",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "AaaCommandAccountingEvent",
+        "DeviceAdminEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "受限审计活动",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 5,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 5",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "configuration-audit",
+      "capability": "配置快照、变更与漂移审计",
+      "assetTypes": [
+        "Configuration snapshot/change/drift audit"
+      ],
+      "dataSources": [
+        "Read-only config adapters / NETCONF / API"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Read-only config adapters / NETCONF / API",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "ConfigurationSnapshotEvent",
+        "ConfigurationDiff",
+        "ComplianceResult"
+      ],
+      "storageDestinations": [
+        "MySQL metadata",
+        "ObjectStore",
+        "ClickHouse"
+      ],
+      "uiSurface": "配置与变更：人工快照、逐行差异、脱敏与来源",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Automatic config collection, vendor-complete redaction, drift/compliance rules, configuration push and object-store archival are not implemented.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 8,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 8",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Administrative text import with bounded comparison",
+      "implementedStorageDestinations": [
+        "MySQL workbench_record and control_audit"
+      ],
+      "implementedScope": [
+        "Admin-only snapshot import, credential-pattern redaction, SHA-256 metadata and same-device bounded line diff."
+      ]
+    },
+    {
+      "id": "server-security-audit",
+      "capability": "服务器安全审计",
+      "assetTypes": [
+        "Server operating-system security audit"
+      ],
+      "dataSources": [
+        "Host event adapters"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Host event adapters",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "HostAuditEvent",
+        "ProcessEvent",
+        "ServiceStateChanged"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "主机审计",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 5,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 5",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "linux-audit",
+      "capability": "Linux auditd/journald/auth/sudo",
+      "assetTypes": [
+        "Linux auditd/journald/auth/sudo audit"
+      ],
+      "dataSources": [
+        "auditd / journald / auth / sudo records"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "auditd / journald / auth / sudo records",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "HostAuditEvent",
+        "ProcessExecuted",
+        "SudoCommandExecuted"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "主机登录与命令调查",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 5,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 5",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "windows-audit",
+      "capability": "Windows 安全日志",
+      "assetTypes": [
+        "Windows Event Log/security audit"
+      ],
+      "dataSources": [
+        "Windows Event Log / WEF adapter"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Windows Event Log / WEF adapter",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "WindowsSecurityEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "Windows 审计活动",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 5,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 5",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "kubernetes-audit",
+      "capability": "Kubernetes API 审计",
+      "assetTypes": [
+        "Kubernetes API audit logs"
+      ],
+      "dataSources": [
+        "Kubernetes audit JSON"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Kubernetes audit JSON",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "KubernetesAuditEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "ObjectStore"
+      ],
+      "uiSurface": "集群审计活动",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 5,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 5",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "aaa-audit",
+      "capability": "AAA 认证授权记账",
+      "assetTypes": [
+        "AAA authentication/authorization/accounting audit"
+      ],
+      "dataSources": [
+        "RADIUS / TACACS+"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "RADIUS / TACACS+",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "AaaAuthenticationEvent",
+        "AaaCommandAccountingEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "ObjectStore"
+      ],
+      "uiSurface": "身份与 AAA 调查",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 6,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 6",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "vpn-audit",
+      "capability": "VPN 会话与分配 IP",
+      "assetTypes": [
+        "VPN session and assigned-IP audit"
+      ],
+      "dataSources": [
+        "VPN accounting / vendor events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "VPN accounting / vendor events",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "VpnSessionStarted",
+        "VpnSessionEnded",
+        "IpAssignmentEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse intervals",
+        "ObjectStore"
+      ],
+      "uiSurface": "VPN 会话与历史归因",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 6,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 6",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "dhcp-audit",
+      "capability": "DHCP 租约与地址归属",
+      "assetTypes": [
+        "DHCP lease and IP-assignment audit"
+      ],
+      "dataSources": [
+        "DHCP server lease/events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "DHCP server lease/events",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "DhcpLeaseEvent",
+        "AddressAssignmentInterval"
+      ],
+      "storageDestinations": [
+        "ClickHouse intervals",
+        "ObjectStore"
+      ],
+      "uiSurface": "关联调查：历史租约区间",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No DHCP server adapter or raw lease-event decoder; intervals are supplied by an authorized external reporter.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 6,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 6",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Authorized typed ADDRESS_LEASE report API",
+      "implementedStorageDestinations": [
+        "MySQL workbench_network_evidence"
+      ],
+      "implementedScope": [
+        "Accept bounded address-assignment intervals with source, provenance, captured site, lifecycle and clock uncertainty."
+      ]
+    },
+    {
+      "id": "dns-audit",
+      "capability": "DNS 观测补充",
+      "assetTypes": [
+        "DNS observation enrichment where enabled"
+      ],
+      "dataSources": [
+        "Approved resolver logs / DNS events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Approved resolver logs / DNS events",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "DnsQueryEvent",
+        "DnsObservation"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "身份调查 DNS 证据",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 6,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 6",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "nat-audit",
+      "capability": "NAT 生命周期与历史元组查询",
+      "assetTypes": [
+        "NAT translation creation/deletion audit"
+      ],
+      "dataSources": [
+        "Vendor-verified Syslog / IPFIX NAT events"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Vendor-verified Syslog / IPFIX NAT events",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "NatTranslationCreated",
+        "NatTranslationDeleted",
+        "NatInterval"
+      ],
+      "storageDestinations": [
+        "ClickHouse canonical intervals/candidate generations",
+        "ObjectStore"
+      ],
+      "uiSurface": "关联调查：NAT 候选与历史区间",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No vendor Syslog/IPFIX NAT decoder, automatic create/delete lifecycle reconstruction, packet payload or Flow ingestion.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 7,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 7",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Authorized typed NAT report API and bounded endpoint query",
+      "implementedStorageDestinations": [
+        "MySQL workbench_network_evidence"
+      ],
+      "implementedScope": [
+        "Query retained NAT intervals by exact IP, port, protocol, direction and instant; preserve ambiguity and reject candidate overflow."
+      ]
+    },
+    {
+      "id": "flow-audit",
+      "capability": "Flow 与连接元数据",
+      "assetTypes": [
+        "Flow/connection metadata audit"
+      ],
+      "dataSources": [
+        "NetFlow v9 / IPFIX; approved legacy v5/sFlow"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "NetFlow v9 / IPFIX; approved legacy v5/sFlow",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "NetworkFlowRecord",
+        "FlowTemplateReceived",
+        "FlowSequenceGapDetected"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "optional approved raw ObjectStore"
+      ],
+      "uiSurface": "Flow Explorer",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 7,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 7",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "alert-action-audit",
+      "capability": "告警与事件处置审计",
+      "assetTypes": [
+        "Alert/incident action audit"
+      ],
+      "dataSources": [
+        "Control action / outbox"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Control action / outbox",
+      "mode": "QUERY_OR_CONTROL",
+      "normalizedContracts": [
+        "AlertAcknowledged",
+        "IncidentAction"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "outbox",
+        "later archive"
+      ],
+      "uiSurface": "事件工作台、告警处置记录与证据访问历史",
+      "alertSupport": "Basic state/freshness only where implemented; full rules/notification engine is Phase 9.",
+      "auditTraceSupport": "Organization-scoped audit records for typed workbench actions; no automatic root-cause or physical device command attribution.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No real-device/vendor verification; no production performance or HA certification."
+      ],
+      "phase": 1,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 1",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Transactional workflow mutation audit, evidence read/export audit and actor-stamped incident notes."
+      ]
+    },
+    {
+      "id": "evidence-audit",
+      "capability": "证据访问导出删除审计",
+      "assetTypes": [
+        "Evidence access/export/deletion audit"
+      ],
+      "dataSources": [
+        "Authorized evidence API / ObjectStore"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Authorized evidence API / ObjectStore",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "EvidenceAccessEvent",
+        "ExportManifest",
+        "LegalHold"
+      ],
+      "storageDestinations": [
+        "MySQL manifests",
+        "ObjectStore",
+        "ClickHouse"
+      ],
+      "uiSurface": "证据资料：内容读取、清单导出与访问记录",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No deletion workflow, deletion audit, export approval, legal hold, digital signature or object-store integration.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 10,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 10",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Authorized evidence read/export API",
+      "implementedStorageDestinations": [
+        "MySQL workbench_record and control_audit"
+      ],
+      "implementedScope": [
+        "Evidence creation, read, export and integrity-failure audit records preserve actor, organization and stable resource ID."
+      ]
+    },
+    {
+      "id": "edge-enrollment",
+      "capability": "Edge 双向 TLS 注册与任务",
+      "assetTypes": [
+        "远程站点与采集器"
+      ],
+      "dataSources": [
+        "mTLS / assignment protocol"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "mTLS / assignment protocol",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "CollectorEnrollment",
+        "CollectorAssignment"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "local durable spool"
+      ],
+      "uiSurface": "采集器注册与任务",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "edge-spool",
+      "capability": "Edge 有界断网缓冲与补传",
+      "assetTypes": [
+        "远程站点与采集器"
+      ],
+      "dataSources": [
+        "Durable local spool / mTLS batch"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Durable local spool / mTLS batch",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "SourceGap",
+        "BatchReceipt",
+        "ReplayWatermark"
+      ],
+      "storageDestinations": [
+        "Edge disk",
+        "Kafka",
+        "ClickHouse"
+      ],
+      "uiSurface": "采集健康与缺口",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "syslog-search",
+      "capability": "Syslog、未知 Trap 与全局搜索",
+      "assetTypes": [
+        "网络设备、服务器、未知来源"
+      ],
+      "dataSources": [
+        "UDP/TCP/TLS Syslog / SNMP traps"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "UDP/TCP/TLS Syslog / SNMP traps",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "SyslogReceived",
+        "UnknownTrapEvent"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "selective Elasticsearch",
+        "ObjectStore"
+      ],
+      "uiSurface": "全局搜索与事件流",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No Syslog/Trap receiver, raw-message parser, full-history full-text index or Elasticsearch search implementation.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 4,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkspaceApiTest, WorkspaceIntegrationTest and WorkspaceServiceTest: 11 passing HTTP/MySQL/failure tests for bounded search only.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 4",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Asset prefix search and bounded recent-event search",
+      "implementedStorageDestinations": [
+        "MySQL inventory and existing ClickHouse event history"
+      ],
+      "implementedScope": [
+        "Search assets by name/address prefix, local page index, and at most 100 retained event records from the latest seven days."
+      ]
+    },
+    {
+      "id": "identity-trace",
+      "capability": "跨源时态身份与证据关联",
+      "assetTypes": [
+        "用户、地址、会话、网络路径"
+      ],
+      "dataSources": [
+        "NAT / VPN / DHCP / AAA / Flow / DNS"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "NAT / VPN / DHCP / AAA / Flow / DNS",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "AddressAssignmentInterval",
+        "NatInterval",
+        "TraceResult"
+      ],
+      "storageDestinations": [
+        "ClickHouse",
+        "MySQL identities",
+        "ObjectStore refs"
+      ],
+      "uiSurface": "关联调查：映射、租约与不确定性",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No VPN/AAA identity chain, user identity verification or Flow-to-destination correlation; CONFIRMED is limited to endpoint mapping within retained records.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 6,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 6",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Bounded NAT and lease temporal correlation",
+      "implementedStorageDestinations": [
+        "MySQL workbench_network_evidence and control_audit"
+      ],
+      "implementedScope": [
+        "NAT and address-lease interval correlation can return CONFIRMED, AMBIGUOUS, INSUFFICIENT_EVIDENCE or NO_MATCH for retained endpoint evidence."
+      ]
+    },
+    {
+      "id": "synthetic-checks",
+      "capability": "跨站点合成可用性探测",
+      "assetTypes": [
+        "应用与服务、DNS、TCP、HTTP"
+      ],
+      "dataSources": [
+        "Approved HTTP/TCP/DNS checks"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Approved HTTP/TCP/DNS checks",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "SyntheticCheckDefinition",
+        "SyntheticCheckResult"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "合成探测：定义管理、来源上报与历史",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No network probe executor, schedule delivery or real endpoint verification; saved definitions do not mean a probe has run.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 2,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 2",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Control-plane check definitions and collector-reported results",
+      "implementedStorageDestinations": [
+        "MySQL workbench_record and workbench_check_result"
+      ],
+      "implementedScope": [
+        "Create, edit, enable/disable and archive definitions; persist idempotent source results and ordered result history."
+      ]
+    },
+    {
+      "id": "alerts-incidents",
+      "capability": "完整规则、事件、通知与静默",
+      "assetTypes": [
+        "全域监测目标"
+      ],
+      "dataSources": [
+        "Metrics/event/state/correlation rules"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Metrics/event/state/correlation rules",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "AlertRule",
+        "AlertState",
+        "Incident",
+        "MaintenanceWindow"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "VictoriaMetrics",
+        "ClickHouse"
+      ],
+      "uiSurface": "告警队列与事件工作台",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No numeric alert-rule engine, notification delivery, escalation, maintenance windows, silencing or automatic remediation.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 9,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 9",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "Manual incident workflow with linked alert and optimistic revisions",
+      "implementedStorageDestinations": [
+        "MySQL workbench_record and control_audit"
+      ],
+      "implementedScope": [
+        "Incident creation, same-organization assignee validation, status updates, bounded notes and mutation audit."
+      ]
+    },
+    {
+      "id": "reports-slos",
+      "capability": "报告、SLO 与容量规划",
+      "assetTypes": [
+        "站点、服务与资源"
+      ],
+      "dataSources": [
+        "Bounded analytical jobs / metrics"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Bounded analytical jobs / metrics",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "ReportDefinition",
+        "SloDefinition",
+        "CapacitySummary"
+      ],
+      "storageDestinations": [
+        "MySQL",
+        "ClickHouse",
+        "ObjectStore"
+      ],
+      "uiSurface": "报告、SLO、容量",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 9,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 9",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "evidence-integrity",
+      "capability": "证据校验、保留锁与法律保留",
+      "assetTypes": [
+        "审计证据、配置、导出包"
+      ],
+      "dataSources": [
+        "Verified S3 provider / SHA-256 manifests"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Verified S3 provider / SHA-256 manifests",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "EvidenceManifest",
+        "LegalHold",
+        "ExportJob"
+      ],
+      "storageDestinations": [
+        "MySQL manifests",
+        "supported ObjectStore"
+      ],
+      "uiSurface": "证据资料：内容摘要校验与未签名清单",
+      "alertSupport": "Only current state alert transitions and manual incident handling are available; full rule/notification integration remains planned.",
+      "auditTraceSupport": "Typed control records preserve actor, organization, source provenance and original observation time where applicable. Scope and limitations are explicit; no blanket identity or immutable-archive claim.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No digital signature, external tamper anchor, WORM/object lock, retention policy or legal hold.",
+        "No real-device/vendor verification or production HA/performance certification."
+      ],
+      "phase": 10,
+      "roadmapTier": "PLANNED",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "INTEGRATION_TESTED",
+      "verificationEvidence": "WorkbenchApiTest, WorkbenchIntegrationTest and WorkbenchSemanticsTest: 26 passing HTTP/MySQL/semantic tests for the described partial control-plane workflows, including revision races, SQL metadata projection, redaction, checksum tampering and tenant/site isolation. Not real-device verification.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 10",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedCollectionMethod": "SHA-256 content verification and manifest generation",
+      "implementedStorageDestinations": [
+        "MySQL workbench_record and control_audit"
+      ],
+      "implementedScope": [
+        "Evidence content is hashed from exact UTF-8 bytes and rechecked on read/export; manifests explicitly state UNSIGNED and worm=false."
+      ]
+    },
+    {
+      "id": "retention-governance",
+      "capability": "分级保留、隐私与删除策略",
+      "assetTypes": [
+        "指标、事件、身份与证据链"
+      ],
+      "dataSources": [
+        "Policy-controlled lifecycle"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Policy-controlled lifecycle",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "RetentionPolicy",
+        "SensitivityClass",
+        "HoldPolicy"
+      ],
+      "storageDestinations": [
+        "All owned stores"
+      ],
+      "uiSurface": "治理与审计策略",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 10,
+      "roadmapTier": "PLANNED",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 10",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    },
+    {
+      "id": "adapter-sdk",
+      "capability": "版本化适配器与能力声明",
+      "assetTypes": [
+        "所有协议适配器"
+      ],
+      "dataSources": [
+        "Java adapter contracts / versioned schemas"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "Java adapter contracts / versioned schemas",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "AdapterCapability",
+        "SourceProvenance",
+        "ParserVersion"
+      ],
+      "storageDestinations": [
+        "Schemas",
+        "MySQL catalog"
+      ],
+      "uiSurface": "设备接入支持目录与读取依据",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "No complete versioned public adapter SDK, plugin lifecycle, signed adapter package or per-model certified compatibility registry.",
+        "No real-device/vendor/firmware verification; hardware acceptance is pending.",
+        "No production performance, HA or cross-site recovery certification."
+      ],
+      "phase": 0,
+      "roadmapTier": "MVP",
+      "maturity": "EXPERIMENTAL",
+      "coverage": "PARTIAL",
+      "verification": "FIXTURE_TESTED",
+      "verificationEvidence": "SnmpDriverTest: real UDP/SNMP4J protocol simulator; RedfishDriverTest: local HTTPS protocol simulator; DeviceSafetyTest and DeviceCountersTest: bounded safety and semantic fixtures. All hardware identity and readings are synthetic. See docs/devices/DEVICE-SUPPORT.md and the two protocol research documents.",
+      "uiPrototypeCoverage": "PARTIAL",
+      "specReferences": [
+        "P04",
+        "P61 Phase 0",
+        "H01-H12"
+      ],
+      "implementationStatus": "PARTIAL_IMPLEMENTATION",
+      "implementedScope": [
+        "Shared typed DeviceProtocol Reading/Identity/Sensor/Port contract, SNMP and Redfish driver implementations, and a nine-family static device-support catalog.",
+        "Observed capabilities/quality/source references are separate from predeclared family scope and hardware verification."
+      ],
+      "implementedCollectionMethod": "In-process Java read-only drivers with a static support catalog",
+      "implementedStorageDestinations": [
+        "MySQL control records and audit"
+      ],
+      "hardwareVerification": "PENDING"
+    },
+    {
+      "id": "ha-recovery-scale",
+      "capability": "高可用、恢复、负载与分片验收",
+      "assetTypes": [
+        "全平台与跨站点数据面"
+      ],
+      "dataSources": [
+        "COMPACT → HA_PERF → measured SCALE"
+      ],
+      "minimumProtocolVersionAssumptions": "Exact adapter/vendor/firmware versions require verification before live device enablement; current application dependencies are pinned in root Maven/pnpm and deployment manifests.",
+      "collectionMethod": "COMPACT → HA_PERF → measured SCALE",
+      "mode": "POLL_OR_PUSH_AS_DECLARED_BY_ADAPTER",
+      "normalizedContracts": [
+        "RecoveryCheckpoint",
+        "BackupManifest",
+        "BenchmarkResult"
+      ],
+      "storageDestinations": [
+        "All stores with independent backups"
+      ],
+      "uiSurface": "运维健康与恢复结果",
+      "alertSupport": "Designed in master; no live alert adapter implemented.",
+      "auditTraceSupport": "Designed typed events, original timestamps and source/evidence references; not implemented.",
+      "securityConsiderations": [
+        "Organization and source scope",
+        "Least-privilege credential references; never disclose source secrets",
+        "Dedicated audit/raw/export permissions for sensitive domains",
+        "Read-only physical infrastructure access by default"
+      ],
+      "knownLimitations": [
+        "Architecture contract retained; adapter, persistence path, permission tests and acceptance remain unimplemented."
+      ],
+      "phase": 13,
+      "roadmapTier": "FUTURE",
+      "maturity": "DESIGNED",
+      "coverage": "NONE",
+      "verification": "NOT_TESTED",
+      "verificationEvidence": "Design in source-v5 master only; no implementation-test evidence.",
+      "uiPrototypeCoverage": "NONE",
+      "specReferences": [
+        "P04",
+        "P61 Phase 13",
+        "H01-H12"
+      ],
+      "implementationStatus": "DESIGN_ONLY"
+    }
+  ]
+}

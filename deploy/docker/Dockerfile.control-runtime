@@ -1,0 +1,10 @@
+# Package the previously verified, platform-independent JAR without recompiling it.
+# Build from the repository root with --platform linux/amd64.
+FROM eclipse-temurin:25-jre@sha256:f9e65324a37f28209ce7dd0e5149a7aa954520ed936fb87813cf6ded2400a112
+WORKDIR /app
+RUN groupadd -g 10001 noeriva && useradd --uid 10001 --gid 10001 --no-create-home noeriva
+COPY services/noeriva-control/target/noeriva-control-0.1.0-SNAPSHOT.jar /app/app.jar
+USER 10001:10001
+EXPOSE 8080
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError --enable-native-access=ALL-UNNAMED"
+ENTRYPOINT ["java","-jar","/app/app.jar"]

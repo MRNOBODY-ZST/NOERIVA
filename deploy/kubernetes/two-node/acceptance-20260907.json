@@ -1,0 +1,122 @@
+{
+  "capturedAt": "2026-09-07T04:04:55.971229+00:00",
+  "namespace": "noeriva-system",
+  "statefulsets": [
+    {
+      "name": "noeriva-clickhouse",
+      "readyReplicas": 1,
+      "nodeName": "argus-primary",
+      "containers": [
+        {
+          "name": "clickhouse",
+          "image": "docker.io/clickhouse/clickhouse-server:26.3.32.14",
+          "imageID": "sha256:46ed78c8a1a61f27684ff26fb7b4a03eeff3b119aed055da350ea87a584c2041",
+          "ready": true,
+          "restartCount": 0
+        }
+      ]
+    },
+    {
+      "name": "noeriva-kafka",
+      "readyReplicas": 1,
+      "nodeName": "argus-primary",
+      "containers": [
+        {
+          "name": "kafka",
+          "image": "docker.io/apache/kafka:4.3.1",
+          "imageID": "sha256:47dccc76b32761bc57462b8753144cdbb73a16b123b1d13d3eedb92bb7952b11",
+          "ready": true,
+          "restartCount": 0
+        }
+      ]
+    },
+    {
+      "name": "noeriva-mysql",
+      "readyReplicas": 1,
+      "nodeName": "argus-primary",
+      "containers": [
+        {
+          "name": "mysql",
+          "image": "docker.io/library/mysql:8.4.11",
+          "imageID": "sha256:bced325a4ab7aec848f4688371c7433351dcb5dba26fbcc29c67727d898ae5cb",
+          "ready": true,
+          "restartCount": 0
+        }
+      ]
+    },
+    {
+      "name": "noeriva-redis",
+      "readyReplicas": 1,
+      "nodeName": "argus-primary",
+      "containers": [
+        {
+          "name": "redis",
+          "image": "docker.io/library/redis:8.2.9-alpine",
+          "imageID": "sha256:9b9bc2eb5b8859235a68b8d72b81977748d243badee819a91c18280612c3495c",
+          "ready": true,
+          "restartCount": 0
+        }
+      ]
+    },
+    {
+      "name": "noeriva-victoriametrics",
+      "readyReplicas": 1,
+      "nodeName": "argus-primary",
+      "containers": [
+        {
+          "name": "victoriametrics",
+          "image": "docker.io/victoriametrics/victoria-metrics:v1.151.0",
+          "imageID": "sha256:3e983f1a7203be2ea7871ce439b8c8d45c4354680647f799288d54c5a96cc124",
+          "ready": true,
+          "restartCount": 0
+        }
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "name": "noeriva-clickhouse-init-v1",
+      "succeeded": 1,
+      "failedAttempts": 1,
+      "completionTime": "2026-09-07T04:04:23Z"
+    },
+    {
+      "name": "noeriva-kafka-init-v1",
+      "succeeded": 1,
+      "failedAttempts": 0,
+      "completionTime": "2026-09-07T03:52:25Z"
+    }
+  ],
+  "pvcs": [
+    {
+      "name": "data-noeriva-clickhouse-0",
+      "phase": "Bound",
+      "storageClass": "local-path",
+      "capacity": "100Gi"
+    },
+    {
+      "name": "data-noeriva-kafka-0",
+      "phase": "Bound",
+      "storageClass": "local-path",
+      "capacity": "20Gi"
+    },
+    {
+      "name": "data-noeriva-mysql-0",
+      "phase": "Bound",
+      "storageClass": "local-path",
+      "capacity": "20Gi"
+    },
+    {
+      "name": "data-noeriva-redis-0",
+      "phase": "Bound",
+      "storageClass": "local-path",
+      "capacity": "1Gi"
+    },
+    {
+      "name": "data-noeriva-victoriametrics-0",
+      "phase": "Bound",
+      "storageClass": "local-path",
+      "capacity": "50Gi"
+    }
+  ]
+}

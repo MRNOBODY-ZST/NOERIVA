@@ -1,0 +1,20 @@
+{{- $root := . -}}
+{{- range $component := list "control" "console" }}
+{{- $cfg := index $root.Values $component }}
+{{- if $cfg.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "noeriva.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "noeriva.labels" $root | nindent 4 }}
+spec:
+  maxUnavailable: {{ $cfg.pdb.maxUnavailable }}
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/component: {{ $component }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "mode": "CONNECTED_COMPOSE",
+  "synthetic": true,
+  "deviceId": "c8f126a4-c344-4478-a71f-5069604db9a0",
+  "interfaceId": "beed829e-5f5e-4bbf-ba74-16ab564e69ee",
+  "observedCells": 1,
+  "totalCells": 168,
+  "averageBps": 800,
+  "source": "CLICKHOUSE:primary",
+  "checks": [
+    "production Nginx SPA and relative API proxy",
+    "in-memory login session reports CONNECTED",
+    "inventory loads existing synthetic asset",
+    "real heatmap query returns one 800 bps hour plus 167 missing/future cells",
+    "ECharts heatmap renders and accessible table shows 800 bit/s",
+    "no browser authorization persistence",
+    "no console or page errors"
+  ],
+  "verifiedAt": "2026-09-06T07:43:42.392Z"
+}

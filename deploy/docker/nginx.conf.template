@@ -1,0 +1,39 @@
+worker_processes auto;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 2048; }
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  access_log off;
+  server_tokens off;
+  client_body_temp_path /tmp/client;
+  proxy_temp_path /tmp/proxy;
+  fastcgi_temp_path /tmp/fastcgi;
+  uwsgi_temp_path /tmp/uwsgi;
+  scgi_temp_path /tmp/scgi;
+  sendfile on;
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+  server {
+    listen 8080;
+    root /usr/share/nginx/html;
+    client_max_body_size 2m;
+    add_header_inherit merge;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    location /health { access_log off; return 200 'ok'; }
+    location /api/ {
+      proxy_pass ${NOERIVA_API_UPSTREAM};
+      proxy_http_version 1.1;
+      proxy_set_header Connection '';
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_buffering off;
+      proxy_read_timeout 70s;
+    }
+    location /static/ { try_files $uri =404; expires 1y; add_header Cache-Control 'public, immutable'; }
+    location / { try_files $uri $uri/ /index.html; add_header Cache-Control 'no-cache'; }
+  }
+}

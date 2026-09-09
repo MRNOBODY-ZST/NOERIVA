@@ -1,0 +1,14 @@
+FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS build
+WORKDIR /app
+RUN npm install -g pnpm@11.19.0
+COPY frontend/noeriva-console/package.json frontend/noeriva-console/pnpm-lock.yaml frontend/noeriva-console/pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=noeriva-pnpm,target=/pnpm/store pnpm install --frozen-lockfile --store-dir=/pnpm/store
+COPY frontend/noeriva-console/ .
+RUN pnpm build
+FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
+COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
+COPY --chown=101:101 deploy/docker/nginx.conf.template /app/nginx.conf.template
+COPY --chown=101:101 deploy/docker/console-entrypoint.sh /app/entrypoint.sh
+USER 101:101
+EXPOSE 8080
+ENTRYPOINT ["/bin/sh","/app/entrypoint.sh"]

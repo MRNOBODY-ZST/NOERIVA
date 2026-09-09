@@ -1,0 +1,15 @@
+**/target/
+**/node_modules/
+**/dist/
+**/coverage/
+**/__pycache__/
+*.pyc
+**/test-results/
+**/playwright-report/
+.env
+.env.*
+!.env.example
+.local/
+.DS_Store
+*.log
+!.mvn/wrapper/maven-wrapper.jar

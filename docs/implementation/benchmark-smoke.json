@@ -1,0 +1,49 @@
+{
+  "measuredAt": "2026-09-06T07:17:27.119408+00:00",
+  "kind": "LOCAL_COMPACT_SMOKE_NOT_CAPACITY_ACCEPTANCE",
+  "mode": "CONNECTED",
+  "host": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "logicalCpus": 14
+  },
+  "concurrency": 32,
+  "inventoryDevices": 1003,
+  "queryMixture": [
+    "/api/v1/devices?limit=100",
+    "/api/v1/devices/00065b86-03c9-4759-99f1-810016214a32/summary",
+    "/api/v1/alerts?limit=50"
+  ],
+  "rounds": {
+    "first_pass": {
+      "requests": 1200,
+      "elapsedSeconds": 1.175,
+      "requestsPerSecond": 1021.61,
+      "p50Ms": 18.78,
+      "p95Ms": 72.65,
+      "p99Ms": 79.52,
+      "statusCounts": {
+        "200": 1200
+      },
+      "responseBytes": 13575194
+    },
+    "warm_pass": {
+      "requests": 1200,
+      "elapsedSeconds": 1.286,
+      "requestsPerSecond": 932.94,
+      "p50Ms": 16.64,
+      "p95Ms": 79.55,
+      "p99Ms": 85.84,
+      "statusCounts": {
+        "200": 1200
+      },
+      "responseBytes": 13575200
+    }
+  },
+  "limitations": [
+    "Synthetic local dataset; no long-history soak or node failure",
+    "first_pass is not a controlled cold-disk/cache test",
+    "No sustained concurrent telemetry writes in this smoke workload",
+    "Not an achieved production SLO or maximum supported capacity"
+  ]
+}

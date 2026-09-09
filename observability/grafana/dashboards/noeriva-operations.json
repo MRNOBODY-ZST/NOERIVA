@@ -1,0 +1,19 @@
+{
+  "uid": "noeriva-operations",
+  "title": "NOERIVA · Runtime health",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "tags": ["noeriva", "self-observability"],
+  "panels": [
+    {"id": 1, "title": "Scrape availability", "type": "timeseries", "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "up{job=~\"noeriva-control|victoriametrics|vmagent|clickhouse\"}", "legendFormat": "{{job}}"}], "fieldConfig": {"defaults": {"min": 0, "max": 1}, "overrides": []}},
+    {"id": 2, "title": "API request rate", "type": "timeseries", "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"noeriva-control\"}[5m]))", "legendFormat": "HTTP {{status}}"}], "fieldConfig": {"defaults": {"unit": "reqps", "min": 0}, "overrides": []}},
+    {"id": 3, "title": "API latency · p95", "type": "timeseries", "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"noeriva-control\"}[5m])))", "legendFormat": "p95"}], "fieldConfig": {"defaults": {"unit": "s", "min": 0}, "overrides": []}},
+    {"id": 4, "title": "JVM heap used", "type": "timeseries", "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "sum(jvm_memory_used_bytes{job=\"noeriva-control\",area=\"heap\"})", "legendFormat": "heap"}], "fieldConfig": {"defaults": {"unit": "bytes", "min": 0}, "overrides": []}},
+    {"id": 5, "title": "vmagent pending remote write bytes", "type": "timeseries", "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "sum(vmagent_remotewrite_pending_data_bytes{job=\"vmagent\"})", "legendFormat": "pending"}], "fieldConfig": {"defaults": {"unit": "bytes", "min": 0}, "overrides": []}},
+    {"id": 6, "title": "Process CPU", "type": "timeseries", "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "noeriva-metrics"}, "targets": [{"refId": "A", "expr": "process_cpu_usage{job=\"noeriva-control\"}", "legendFormat": "control"}], "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0}, "overrides": []}}
+  ]
+}

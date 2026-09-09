@@ -1,0 +1,228 @@
+[
+  {
+    "module": "noeriva-control",
+    "suites": [
+      {
+        "name": "io.noeriva.control.DemoApiTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "3.409"
+      },
+      {
+        "name": "io.noeriva.control.HeatmapSourceControllerTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.084"
+      },
+      {
+        "name": "io.noeriva.control.MySqlRepositoryIntegrationTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "5.31"
+      },
+      {
+        "name": "io.noeriva.control.ProjectionPolicyTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.007"
+      },
+      {
+        "name": "io.noeriva.control.RollupJobsApiTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1.963"
+      },
+      {
+        "name": "io.noeriva.control.RollupJobsIntegrationTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "6.9"
+      },
+      {
+        "name": "io.noeriva.control.RollupJobsTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.006"
+      },
+      {
+        "name": "io.noeriva.control.WorkbenchApiTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1.802"
+      },
+      {
+        "name": "io.noeriva.control.WorkbenchIntegrationTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "7.957"
+      },
+      {
+        "name": "io.noeriva.control.WorkbenchSemanticsTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.004"
+      },
+      {
+        "name": "io.noeriva.control.WorkspaceApiTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1.257"
+      },
+      {
+        "name": "io.noeriva.control.WorkspaceHistoryFailureTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.031"
+      },
+      {
+        "name": "io.noeriva.control.WorkspaceRepositoryIntegrationTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "5.076"
+      },
+      {
+        "name": "io.noeriva.control.devices.DeviceAccessIntegrationTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "8.16"
+      },
+      {
+        "name": "io.noeriva.control.devices.DeviceCountersTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.018"
+      },
+      {
+        "name": "io.noeriva.control.devices.DeviceSafetyTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.223"
+      },
+      {
+        "name": "io.noeriva.control.devices.RedfishDriverTest",
+        "tests": "30",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "3.702"
+      },
+      {
+        "name": "io.noeriva.control.devices.SnmpDriverTest",
+        "tests": "17",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1.047"
+      }
+    ]
+  },
+  {
+    "module": "noeriva-query",
+    "suites": [
+      {
+        "name": "io.noeriva.query.CounterRollupTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.005"
+      },
+      {
+        "name": "io.noeriva.query.DemoQueryRepositoryTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.075"
+      },
+      {
+        "name": "io.noeriva.query.HeatmapBuilderTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.053"
+      },
+      {
+        "name": "io.noeriva.query.HeatmapSourceRoutingTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.376"
+      },
+      {
+        "name": "io.noeriva.query.LiveMetricPipelineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "6.011"
+      },
+      {
+        "name": "io.noeriva.query.ProviderHttpTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.46"
+      },
+      {
+        "name": "io.noeriva.query.QueryAdmissionTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.024"
+      },
+      {
+        "name": "io.noeriva.query.QueryServiceTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.006"
+      },
+      {
+        "name": "io.noeriva.query.RollupWorkerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "0.007"
+      }
+    ]
+  }
+]

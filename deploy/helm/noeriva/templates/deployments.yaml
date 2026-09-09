@@ -1,0 +1,157 @@
+{{- $root := . -}}
+{{- range $component := list "control" "worker" "console" }}
+{{- $cfg := index $root.Values $component }}
+{{- if or (ne $component "worker") $root.Values.worker.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "noeriva.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "noeriva.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  {{- if eq $component "worker" }}
+  replicas: 1
+  {{- else if or (eq $component "console") (not $root.Values.control.autoscaling.enabled) }}
+  replicas: {{ $cfg.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    {{- if eq $component "worker" }}
+    type: Recreate
+    {{- else }}
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+    {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "noeriva.labels" $root | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+      annotations:
+        checksum/config: {{ include (print $root.Template.BasePath "/configmap.yaml") $root | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      serviceAccountName: {{ include "noeriva.serviceAccountName" $root }}
+      terminationGracePeriodSeconds: 45
+      {{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: {{ $cfg.topologySpreadWhenUnsatisfiable }}
+          {{- if ne $component "worker" }}
+          matchLabelKeys: [pod-template-hash]
+          {{- end }}
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ $root.Release.Name }}
+              app.kubernetes.io/component: {{ $component }}
+      containers:
+        - name: {{ $component }}
+          {{- if eq $component "worker" }}
+          image: {{ include "noeriva.image" $root.Values.control.image | quote }}
+          imagePullPolicy: {{ $root.Values.control.image.pullPolicy }}
+          {{- else }}
+          image: {{ include "noeriva.image" $cfg.image | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy }}
+          {{- end }}
+          ports:
+            - {name: http, containerPort: 8080}
+            {{- if and (eq $component "worker") $root.Values.worker.natReceiver.enabled }}
+            - {name: nat-hsl, containerPort: {{ $root.Values.worker.natReceiver.port }}, protocol: UDP}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          {{- if ne $component "console" }}
+          envFrom:
+            - configMapRef: {name: {{ include "noeriva.fullname" $root }}-runtime}
+            - secretRef: {name: {{ required "runtime.existingSecret is required" $root.Values.runtime.existingSecret }}}
+          env:
+            - name: NOERIVA_CREDENTIAL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.runtime.existingSecret }}
+                  key: NOERIVA_CREDENTIAL_KEY
+            - name: NOERIVA_DEVICE_COLLECTOR_ENABLED
+              value: {{ eq $component "worker" | quote }}
+            - name: NOERIVA_APPLICATION_COLLECTOR_ENABLED
+              value: {{ and (eq $component "worker") $root.Values.worker.applicationCollectorEnabled | quote }}
+            - name: NOERIVA_NAT_RECEIVER_ENABLED
+              value: {{ and (eq $component "worker") $root.Values.worker.natReceiver.enabled | quote }}
+            - name: NOERIVA_NAT_UDP_PORT
+              value: {{ $root.Values.worker.natReceiver.port | quote }}
+            - name: NOERIVA_ROLLUP_ENABLED
+              value: {{ eq $component "worker" | quote }}
+          {{- with $root.Values.runtime.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          {{- else }}
+          env:
+            - name: NOERIVA_API_UPSTREAM
+              value: http://{{ include "noeriva.fullname" $root }}-control:8080
+          startupProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 3
+            failureThreshold: 20
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 15
+          {{- end }}
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            {{- if eq $component "console" }}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+            - {name: nginx-run, mountPath: /var/run}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 128Mi}
+        {{- if eq $component "console" }}
+        - name: nginx-cache
+          emptyDir: {sizeLimit: 32Mi}
+        - name: nginx-run
+          emptyDir: {sizeLimit: 1Mi}
+        {{- end }}
+      {{- with (merge (deepCopy ($cfg.nodeSelector | default dict)) $root.Values.nodeSelector) }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $root.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

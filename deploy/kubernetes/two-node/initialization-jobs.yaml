@@ -1,0 +1,176 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noeriva-kafka-init-v2
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-bootstrap
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: kafka-bootstrap
+    noeriva.io/bootstrap-for: kafka
+    noeriva.io/data-plane: 'true'
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 480
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-bootstrap
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: kafka-bootstrap
+        noeriva.io/bootstrap-for: kafka
+        noeriva.io/data-plane: 'true'
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: initialize
+        image: apache/kafka:4.3.1
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -ec
+        - |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 24); do
+            if timeout 10 /opt/kafka/bin/kafka-topics.sh --bootstrap-server noeriva-kafka:9092 --list >/dev/null 2>&1; then ready=1; break; fi
+            sleep 2
+          done
+          [ "$ready" = 1 ] || { echo "Kafka did not become ready within the bootstrap budget" >&2; exit 1; }
+          for topic in noeriva.events.v1 noeriva.events.dlq.v1 noeriva.control.v1 noeriva.nat.v1; do
+            timeout 30 /opt/kafka/bin/kafka-topics.sh --bootstrap-server noeriva-kafka:9092 --create --if-not-exists --topic "$topic" --partitions 3 --replication-factor 1 --config min.insync.replicas=1 --config retention.ms=-1 --config retention.bytes=-1
+            description=$(timeout 15 /opt/kafka/bin/kafka-topics.sh --bootstrap-server noeriva-kafka:9092 --describe --topic "$topic")
+            printf '%s\n' "$description" | grep -Eq 'PartitionCount:[[:space:]]*3([[:space:]]|$)' || { echo "Unexpected topic partition count: $topic" >&2; exit 1; }
+            printf '%s\n' "$description" | grep -Eq 'ReplicationFactor:[[:space:]]*1([[:space:]]|$)' || { echo "Unexpected topic replication factor: $topic" >&2; exit 1; }
+          done
+          echo "Four NOERIVA topics verified: 3 partitions, RF=1, no automatic retention deletion"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '1'
+            memory: 384Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: logs
+          mountPath: /opt/kafka/logs
+        env:
+        - name: KAFKA_HEAP_OPTS
+          value: -Xms64m -Xmx192m
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: logs
+        emptyDir:
+          sizeLimit: 16Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noeriva-clickhouse-init-v4
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-bootstrap
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: clickhouse-bootstrap
+    noeriva.io/bootstrap-for: clickhouse
+    noeriva.io/data-plane: 'true'
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 480
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noeriva-bootstrap
+        app.kubernetes.io/part-of: noeriva
+        app.kubernetes.io/component: clickhouse-bootstrap
+        noeriva.io/bootstrap-for: clickhouse
+        noeriva.io/data-plane: 'true'
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        noeriva.io/data-plane: 'true'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: initialize
+        image: clickhouse/clickhouse-server:26.3.32.14
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -ec
+        - |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 30); do
+            if clickhouse-client --host noeriva-clickhouse --user noeriva --password "$CLICKHOUSE_PASSWORD" --connect_timeout 3 --receive_timeout 5 --query 'SELECT 1' >/dev/null 2>&1; then ready=1; break; fi
+            sleep 2
+          done
+          [ "$ready" = 1 ] || { echo "ClickHouse did not become ready within the bootstrap budget" >&2; exit 1; }
+          for file in /schema/001-metric-rollups.sql /schema/002-control-events.sql /schema/003-nat-audit.sql /schema/004-application-monitoring.sql /schema/005-nat-receipt-index.sql; do
+            clickhouse-client --host noeriva-clickhouse --user noeriva --password "$CLICKHOUSE_PASSWORD" --connect_timeout 3 --receive_timeout 30 --multiquery < "$file"
+          done
+          count=$(clickhouse-client --host noeriva-clickhouse --user noeriva --password "$CLICKHOUSE_PASSWORD" --connect_timeout 3 --receive_timeout 30 --query "SELECT count() FROM system.tables WHERE database='noeriva' AND name IN ('metric_rollups','control_events','nat_audit_events','application_observations') AND engine='ReplacingMergeTree' FORMAT TSV")
+          [ "$count" = 4 ] || { echo "ClickHouse tables are missing or use unexpected engines" >&2; exit 1; }
+          index_count=$(clickhouse-client --host noeriva-clickhouse --user noeriva --password "$CLICKHOUSE_PASSWORD" --connect_timeout 3 --receive_timeout 30 --query "SELECT count() FROM system.tables WHERE database='noeriva' AND ((name='nat_audit_receipts' AND engine='MergeTree') OR (name='nat_audit_receipts_mv' AND engine='MaterializedView')) FORMAT TSV")
+          [ "$index_count" = 2 ] || { echo "NAT ordered index or materialized view is missing" >&2; exit 1; }
+          echo "NOERIVA ClickHouse schema initialization completed; existing NAT history requires the documented bounded backfill before API rollout"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '1'
+            memory: 384Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: schema
+          mountPath: /schema
+          readOnly: true
+        env:
+        - name: CLICKHOUSE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: noeriva-runtime
+              key: NOERIVA_CLICKHOUSE_PASSWORD
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: schema
+        configMap:
+          name: noeriva-clickhouse-init

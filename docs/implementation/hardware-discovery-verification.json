@@ -1,0 +1,939 @@
+{
+  "observedAt": "2026-09-06T19:25:27.042903+00:00",
+  "scope": "192.168.4.0/24",
+  "method": "STORED_SSH_NEIGHBOR_EVIDENCE_ONLY",
+  "activeProbes": 0,
+  "candidates": [
+    {
+      "id": "049cc709-adbc-40b7-afac-978ac0e0a1e8",
+      "revision": 1,
+      "address": "192.168.4.151",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:c7:ea:5e",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.151",
+          "mac": "bc:24:11:c7:ea:5e",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 3.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "0501bae8-78dd-4185-b612-b721cc1bc43e",
+      "revision": 1,
+      "address": "192.168.4.3",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:fa:49:cc",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.3",
+          "mac": "bc:24:11:fa:49:cc",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 132.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "2bee39da-ea8f-4182-b6d6-28ab7037412f",
+      "revision": 1,
+      "address": "192.168.4.138",
+      "siteId": "default",
+      "name": null,
+      "mac": "f4:f1:9e:2f:96:a8",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.138",
+          "mac": "f4:f1:9e:2f:96:a8",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "33b73ea4-9f92-464c-97df-a43a273d7a49",
+      "revision": 1,
+      "address": "192.168.4.141",
+      "siteId": "default",
+      "name": null,
+      "mac": "da:24:95:b2:e6:d0",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.141",
+          "mac": "da:24:95:b2:e6:d0",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 2.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "3fb808bb-360f-45d6-8058-89f6811dc134",
+      "revision": 1,
+      "address": "192.168.4.63",
+      "siteId": "default",
+      "name": null,
+      "mac": "20:0b:c7:9b:d1:41",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.63",
+          "mac": "20:0b:c7:9b:d1:41",
+          "interfaceName": "Fo 1/1/1",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 2.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "424f61fb-0269-46a7-967a-deca1935e78b",
+      "revision": 1,
+      "address": "192.168.4.57",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:70:54:36",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.57",
+          "mac": "bc:24:11:70:54:36",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "4af30a50-525c-4aea-aa8b-3b51f2d1c389",
+      "revision": 1,
+      "address": "192.168.4.4",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:2d:47:bd",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.4",
+          "mac": "bc:24:11:2d:47:bd",
+          "interfaceName": "Fo 1/1/1",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 19.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "4bb19275-889f-486a-8002-f8b0f0717ace",
+      "revision": 1,
+      "address": "192.168.4.56",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:c8:ce:02",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.56",
+          "mac": "bc:24:11:c8:ce:02",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 6.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "50763595-34f5-4e2a-9b32-c8928b5c597f",
+      "revision": 1,
+      "address": "192.168.4.20",
+      "siteId": "default",
+      "name": null,
+      "mac": "60:0b:03:6f:a9:9b",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.20",
+          "mac": "60:0b:03:6f:a9:9b",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 2.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "5581ed54-b633-449b-b74f-fd078824e835",
+      "revision": 1,
+      "address": "192.168.4.51",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:ad:ff:f9",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.51",
+          "mac": "bc:24:11:ad:ff:f9",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "65517d0d-4777-4c27-8a55-90c0b5191b44",
+      "revision": 1,
+      "address": "192.168.4.114",
+      "siteId": "default",
+      "name": null,
+      "mac": "50:88:11:51:26:1b",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.114",
+          "mac": "50:88:11:51:26:1b",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 19.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "81506e2d-09d5-4fe4-b202-ff03c0654833",
+      "revision": 1,
+      "address": "192.168.4.30",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:65:da:8d",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.30",
+          "mac": "bc:24:11:65:da:8d",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "89bdcacf-1a4f-4813-8d36-952aa1f98082",
+      "revision": 1,
+      "address": "192.168.4.55",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:12:bc:2e",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.55",
+          "mac": "bc:24:11:12:bc:2e",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 7.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "94b65f1f-5265-49c7-bd08-6d94bde726d0",
+      "revision": 1,
+      "address": "192.168.4.134",
+      "siteId": "default",
+      "name": null,
+      "mac": "3c:6d:66:b4:53:74",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.134",
+          "mac": "3c:6d:66:b4:53:74",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 10.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "b274c863-c1cb-43f1-8519-31ac344b40f0",
+      "revision": 1,
+      "address": "192.168.4.133",
+      "siteId": "default",
+      "name": null,
+      "mac": "d8:cc:98:df:28:ae",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.133",
+          "mac": "d8:cc:98:df:28:ae",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "b8c87674-dfb3-4242-9a2f-c2a17abd023a",
+      "revision": 1,
+      "address": "192.168.4.154",
+      "siteId": "default",
+      "name": null,
+      "mac": "d8:3a:dd:bf:4c:70",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.154",
+          "mac": "d8:3a:dd:bf:4c:70",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 12.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "bb8fc705-6817-4a80-ac08-9539f1414f60",
+      "revision": 2,
+      "address": "192.168.4.1",
+      "siteId": "default",
+      "name": null,
+      "mac": "0c:29:ef:b3:5f:22",
+      "status": "LINKED",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.1",
+          "mac": "0c:29:ef:b3:5f:22",
+          "interfaceName": null,
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": null,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_AGE_UNKNOWN"
+          ]
+        }
+      ],
+      "associatedDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "c269d5cd-e436-4eaf-b4b2-0a202c337616",
+      "revision": 1,
+      "address": "192.168.4.10",
+      "siteId": "default",
+      "name": null,
+      "mac": "58:38:79:50:6c:ca",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.10",
+          "mac": "58:38:79:50:6c:ca",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 200.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "c904bf15-f828-4ddc-ba86-5855320bc7f0",
+      "revision": 1,
+      "address": "192.168.4.21",
+      "siteId": "default",
+      "name": null,
+      "mac": "e4:1d:2d:b3:c3:50",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.21",
+          "mac": "e4:1d:2d:b3:c3:50",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "cc238184-709c-4bcc-b556-bf42dca356af",
+      "revision": 1,
+      "address": "192.168.4.60",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:60:58:6c",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.60",
+          "mac": "bc:24:11:60:58:6c",
+          "interfaceName": "Fo 1/1/1",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 132.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "ceff4c31-ab6f-4e51-8998-d180f8ed18b6",
+      "revision": 1,
+      "address": "192.168.4.52",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:65:48:71",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.52",
+          "mac": "bc:24:11:65:48:71",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 129.0,
+          "validUntil": null,
+          "qualityFlags": [
+            "ARP_ENTRY_OLD"
+          ]
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "d2cede91-ecb6-4589-8a6c-0510d00fa176",
+      "revision": 1,
+      "address": "192.168.4.132",
+      "siteId": "default",
+      "name": null,
+      "mac": "1c:a0:b8:78:65:fd",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.132",
+          "mac": "1c:a0:b8:78:65:fd",
+          "interfaceName": "Fo 1/2/5",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "dd2f6572-a763-41a4-9bdb-635e072c82d2",
+      "revision": 1,
+      "address": "192.168.4.22",
+      "siteId": "default",
+      "name": null,
+      "mac": "18:66:da:96:a9:72",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.22",
+          "mac": "18:66:da:96:a9:72",
+          "interfaceName": "Fo 1/1/1",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 1.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "e58ca935-5e16-4b03-9d2b-a09c87704fe8",
+      "revision": 1,
+      "address": "192.168.4.50",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:d2:40:2f",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.50",
+          "mac": "bc:24:11:d2:40:2f",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 5.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "e60390d9-8aa5-4110-83d2-7236a3a484f1",
+      "revision": 1,
+      "address": "192.168.4.62",
+      "siteId": "default",
+      "name": null,
+      "mac": "38:bc:01:93:78:00",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.62",
+          "mac": "38:bc:01:93:78:00",
+          "interfaceName": "Fo 1/1/1",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 0.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    },
+    {
+      "id": "f9235857-21e0-4ac1-8465-dade1790a499",
+      "revision": 1,
+      "address": "192.168.4.2",
+      "siteId": "default",
+      "name": null,
+      "mac": "bc:24:11:5f:2a:bf",
+      "status": "NEW",
+      "reasons": [
+        "NEIGHBOR_EVIDENCE_ONLY"
+      ],
+      "evidence": [
+        {
+          "sourceDeviceId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+          "sourceDeviceName": "Dell-S6100-ON-254.1",
+          "source": "ARP",
+          "observedAt": "2026-09-06T19:22:30.398329051Z",
+          "address": "192.168.4.2",
+          "mac": "bc:24:11:5f:2a:bf",
+          "interfaceName": "Fo 1/1/2",
+          "vlan": "4",
+          "name": null,
+          "chassisId": null,
+          "chassisSubtype": null,
+          "portId": null,
+          "ttlSeconds": null,
+          "ageMinutes": 3.0,
+          "validUntil": null,
+          "qualityFlags": []
+        }
+      ],
+      "associatedDeviceId": null,
+      "firstSeenAt": "2026-09-06T19:22:30.398329051Z",
+      "lastSeenAt": "2026-09-06T19:22:30.398329051Z"
+    }
+  ],
+  "confirmedAlias": {
+    "address": "192.168.4.1",
+    "assetId": "5a42681b-fe62-4c0f-b138-6971976479f0",
+    "managementAddress": "192.168.254.1",
+    "evidence": "Read-only show ip interface brief returned Vlan 4 and Vlan 254 local addresses on the same authorized Dell switch",
+    "duplicateAssetCreated": false
+  }
+}

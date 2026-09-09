@@ -1,0 +1,9 @@
+**
+!frontend/
+!frontend/noeriva-console/
+!frontend/noeriva-console/dist/
+!frontend/noeriva-console/dist/**
+!deploy/
+!deploy/docker/
+!deploy/docker/nginx.conf.template
+!deploy/docker/console-entrypoint.sh

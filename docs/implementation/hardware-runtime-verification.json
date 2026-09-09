@@ -1,0 +1,263 @@
+{
+  "observedAt": "2026-09-06T19:29:37.920430+00:00",
+  "scope": "Selected real hardware via the local platform API",
+  "method": "READ_ONLY_API_CHECK",
+  "devices": [
+    {
+      "id": "5a42681b-fe62-4c0f-b138-6971976479f0",
+      "name": "Dell-S6100-ON-254.1",
+      "address": "192.168.254.1",
+      "slot": "ssh",
+      "connectionRevision": 2,
+      "status": "SUCCESS",
+      "observedAt": "2026-09-06T19:29:19.833025962Z",
+      "ageSeconds": 18.1,
+      "identity": {
+        "vendor": "Dell",
+        "family": "Networking OS9",
+        "profileId": "DELL_OS9",
+        "model": "S6100-ON",
+        "serialNumber": "B60C9Z2",
+        "firmware": "9.14(2.23)",
+        "sysObjectId": null,
+        "sysName": null,
+        "description": null
+      },
+      "health": "UNKNOWN",
+      "metrics": {},
+      "sensorCount": 0,
+      "capabilities": [
+        "identity",
+        "arp-neighbors",
+        "lldp-neighbors"
+      ],
+      "qualityFlags": [],
+      "series": []
+    },
+    {
+      "id": "a720db9a-6439-4b2a-9afa-772efa391976",
+      "name": "Cisco-ASR1002-X-254.3",
+      "address": "192.168.254.3",
+      "slot": "ssh",
+      "connectionRevision": 2,
+      "status": "PARTIAL",
+      "observedAt": "2026-09-06T19:29:19.414714254Z",
+      "ageSeconds": 18.5,
+      "identity": {
+        "vendor": "Cisco",
+        "family": "IOS XE",
+        "profileId": "CISCO_IOS_XE",
+        "model": "ASR1002-X",
+        "serialNumber": "FOX2151P79R",
+        "firmware": "17.09.08",
+        "sysObjectId": null,
+        "sysName": null,
+        "description": null
+      },
+      "health": "UNKNOWN",
+      "metrics": {},
+      "sensorCount": 0,
+      "capabilities": [
+        "identity",
+        "arp-neighbors"
+      ],
+      "qualityFlags": [
+        "SSH_COMMAND_UNSUPPORTED",
+        "SSH_CDP_UNRECOGNIZED"
+      ],
+      "series": []
+    },
+    {
+      "id": "03057d47-4b26-43c1-b2ec-bb2defef7d57",
+      "name": "Huawei-iMana-254.10",
+      "address": "192.168.254.10",
+      "slot": "ssh",
+      "connectionRevision": 2,
+      "status": "SUCCESS",
+      "observedAt": "2026-09-06T19:29:22.912257964Z",
+      "ageSeconds": 15.1,
+      "identity": {
+        "vendor": "Huawei",
+        "family": "iMana",
+        "profileId": "HUAWEI_IMANA",
+        "model": "Tecal RH2288 V2",
+        "serialNumber": "2102310JUQ10D7002786",
+        "firmware": "(U1029)7.35",
+        "sysObjectId": null,
+        "sysName": null,
+        "description": null
+      },
+      "health": "HEALTHY",
+      "metrics": {
+        "temperature_celsius": 31.0
+      },
+      "sensorCount": 99,
+      "capabilities": [
+        "identity",
+        "health",
+        "sensors"
+      ],
+      "qualityFlags": [],
+      "series": [
+        {
+          "metric": "temperature_celsius",
+          "source": "VICTORIAMETRICS",
+          "presentPoints": 21
+        }
+      ]
+    },
+    {
+      "id": "93c22b79-3635-4cee-8cb2-223495e99a69",
+      "name": "Huawei-iMana-254.11",
+      "address": "192.168.254.11",
+      "slot": "ssh",
+      "connectionRevision": 2,
+      "status": "SUCCESS",
+      "observedAt": "2026-09-06T19:29:23.090644964Z",
+      "ageSeconds": 14.9,
+      "identity": {
+        "vendor": "Huawei",
+        "family": "iMana",
+        "profileId": "HUAWEI_IMANA",
+        "model": "Tecal RH2288H V2",
+        "serialNumber": "2102310QPD10F7005442",
+        "firmware": "(U1029)7.38",
+        "sysObjectId": null,
+        "sysName": null,
+        "description": null
+      },
+      "health": "HEALTHY",
+      "metrics": {
+        "temperature_celsius": 30.0
+      },
+      "sensorCount": 99,
+      "capabilities": [
+        "identity",
+        "health",
+        "sensors"
+      ],
+      "qualityFlags": [],
+      "series": [
+        {
+          "metric": "temperature_celsius",
+          "source": "VICTORIAMETRICS",
+          "presentPoints": 20
+        }
+      ]
+    },
+    {
+      "id": "81a764e7-bf11-4629-8b57-6181cdabe7cb",
+      "name": "Huawei-iMana-254.12",
+      "address": "192.168.254.12",
+      "slot": "ssh",
+      "connectionRevision": 2,
+      "status": "SUCCESS",
+      "observedAt": "2026-09-06T19:29:23.417087381Z",
+      "ageSeconds": 14.6,
+      "identity": {
+        "vendor": "Huawei",
+        "family": "iMana",
+        "profileId": "HUAWEI_IMANA",
+        "model": "Tecal RH2288H V2-12L",
+        "serialNumber": "2102311HRC10FA000003",
+        "firmware": "(U1029)7.38",
+        "sysObjectId": null,
+        "sysName": null,
+        "description": null
+      },
+      "health": "HEALTHY",
+      "metrics": {
+        "temperature_celsius": 36.0
+      },
+      "sensorCount": 101,
+      "capabilities": [
+        "identity",
+        "health",
+        "sensors"
+      ],
+      "qualityFlags": [],
+      "series": [
+        {
+          "metric": "temperature_celsius",
+          "source": "VICTORIAMETRICS",
+          "presentPoints": 20
+        }
+      ]
+    },
+    {
+      "id": "65ba7b3f-56ac-4212-aaf4-509067b0ea28",
+      "name": "Inspur-BMC-254.20",
+      "address": "192.168.254.20",
+      "slot": "redfish",
+      "connectionRevision": 2,
+      "status": "PARTIAL",
+      "observedAt": "2026-09-06T19:29:18.576684587Z",
+      "ageSeconds": 19.5,
+      "identity": {
+        "vendor": "INSPUR",
+        "family": "BMC",
+        "profileId": "inspur-bmc",
+        "model": "SA5212M5",
+        "serialNumber": "820972080",
+        "firmware": "4.26.6 (2020-11-11 14:21:18)",
+        "sysObjectId": null,
+        "sysName": "IEIB4055D278D93",
+        "description": "Redfish standard resources"
+      },
+      "health": "HEALTHY",
+      "metrics": {
+        "power_watts": 322.0,
+        "temperature_celsius": 51.0
+      },
+      "sensorCount": 41,
+      "capabilities": [
+        "redfish",
+        "inventory",
+        "managerInventory",
+        "temperature",
+        "fanSpeed",
+        "power",
+        "voltage",
+        "componentHealth"
+      ],
+      "qualityFlags": [
+        "PARTIAL",
+        "LEGACY_STRING_MEMBER_LINK",
+        "READING_UNAVAILABLE",
+        "INSPUR_NUMERIC_STRING"
+      ],
+      "series": [
+        {
+          "metric": "power_watts",
+          "source": "VICTORIAMETRICS",
+          "presentPoints": 21
+        },
+        {
+          "metric": "temperature_celsius",
+          "source": "VICTORIAMETRICS",
+          "presentPoints": 21
+        }
+      ]
+    }
+  ],
+  "worker": {
+    "id": "device-poller",
+    "name": "设备协议采集 Worker",
+    "siteId": null,
+    "status": "ONLINE",
+    "lastHeartbeat": "2026-09-06T19:29:34.190021803Z",
+    "lastSuccessfulCollection": "2026-09-06T19:29:23.440042672Z",
+    "queueBytes": 0,
+    "queueLimitBytes": 0,
+    "oldestQueuedAt": null,
+    "version": "0.1.0",
+    "capabilities": [
+      "SNMP",
+      "REDFISH",
+      "SSH",
+      "READ_ONLY",
+      "DATABASE_LEASES"
+    ],
+    "source": "CONNECTED"
+  }
+}

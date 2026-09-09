@@ -1,0 +1,37 @@
+package io.noeriva.control.nat;
+
+import java.io.*;
+import java.lang.reflect.*;
+import java.time.*;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import static org.assertj.core.api.Assertions.*;
+
+class NatDecoderTest {
+ static final JsonMapper JSON=new JsonMapper();static final Instant NOW=Instant.parse("2026-09-07T00:00:00Z");
+ static final int[][] FIELDS={{8,4},{225,4},{12,4},{226,4},{7,2},{227,2},{11,2},{228,2},{234,4},{4,1},{230,1},{323,8}};
+ Object decoder(){try{return Class.forName("io.noeriva.control.nat.NatDecoder").getDeclaredConstructor().newInstance();}catch(Exception e){throw new AssertionError("NAT decoder must implement verified v9 templates",e);}}
+ JsonNode read(Object d,byte[] bytes,Instant at){try{return JSON.valueToTree(d.getClass().getMethod("decode",String.class,String.class,String.class,String.class,byte[].class,Instant.class).invoke(d,"org","gateway","site","192.0.2.1",bytes,at));}catch(InvocationTargetException e){throw (RuntimeException)e.getCause();}catch(Exception e){throw new AssertionError(e);}}
+ JsonNode read(Object d,byte[] bytes){return read(d,bytes,NOW);}
+ @Test void templateNormalizesVerifiedFieldsAndKeepsProvenance(){var d=decoder();var r=read(d,packet(1,1,1000,template(FIELDS),data(FIELDS,6,1,19)));var e=r.path("events").get(0);assertThat(e.path("privateIp").asString()).isEqualTo("192.0.2.10");assertThat(e.path("publicPort").asInt()).isEqualTo(44000);assertThat(e.path("vrfId").asLong()).isEqualTo(19);assertThat(e.path("protocol").asInt()).isEqualTo(6);assertThat(e.path("deviceEventAt").asString()).isEqualTo(NOW.toString());assertThat(e.path("provenance").asString()).isEqualTo("CISCO_NAT_HSL_V9");assertThat(e.path("packetSha256").asString()).hasSize(64);}
+ @Test void missingEventTimestampIsNullAndNeverReplacedByReceiverTime(){int[][] fields=Arrays.copyOf(FIELDS,FIELDS.length-1);var r=read(decoder(),packet(1,1,1000,template(fields),data(fields,17,2,0)));var e=r.path("events").get(0);assertThat(e.path("deviceEventAt").isNull()).isTrue();assertThat(e.path("qualityFlags").toString()).contains("DEVICE_TIME_MISSING");assertThat(e.path("eventType").asString()).isEqualTo("DELETE");}
+ @Test void dataWithoutMatchingDomainTemplateDoesNotInventEvents(){var d=decoder();read(d,packet(1,1,1000,template(FIELDS)));var r=read(d,packet(2,2,1100,data(FIELDS,6,1,1)));assertThat(r.path("events").size()).isZero();assertThat(r.path("unknownTemplates").asLong()).isEqualTo(1);}
+ @Test void duplicateDatagramsHaveStableEventIdsAcrossDecoderRestart(){byte[] packet=packet(1,1,1000,template(FIELDS),data(FIELDS,6,1,1));var d=decoder();String id=read(d,packet).path("events").get(0).path("id").asString();assertThat(read(d,packet).path("duplicate").asBoolean()).isTrue();assertThat(read(decoder(),packet).path("events").get(0).path("id").asString()).isEqualTo(id);}
+ @Test void protocolAndVrfCannotCollide(){String a=read(decoder(),packet(1,1,1000,template(FIELDS),data(FIELDS,6,1,1))).path("events").get(0).path("id").asString();String b=read(decoder(),packet(1,1,1000,template(FIELDS),data(FIELDS,17,1,2))).path("events").get(0).path("id").asString();assertThat(a).isNotEqualTo(b);}
+ @Test void malformedLengthAndVariableLengthAreRejected(){byte[] bad=packet(1,1,1000,template(FIELDS));bad[22]=127;bad[23]=-1;assertThatThrownBy(()->read(decoder(),bad)).isInstanceOf(IllegalArgumentException.class);assertThatThrownBy(()->read(decoder(),packet(1,1,1000,template(new int[][]{{230,65535}})))).isInstanceOf(IllegalArgumentException.class);}
+ @Test void expiredTemplateFailsClosed(){var d=decoder();read(d,packet(1,1,1000,template(FIELDS)));var r=read(d,packet(1,2,1802000,data(FIELDS,6,1,1)),NOW.plusSeconds(1801));assertThat(r.path("events").size()).isZero();assertThat(r.path("unknownTemplates").asLong()).isEqualTo(1);}
+ @Test void exporterRestartDiscardsTemplatesAndMarksGap(){var d=decoder();read(d,packet(1,100,100000,template(FIELDS)));var r=read(d,packet(1,1,100,data(FIELDS,6,1,1)),NOW.plusSeconds(1));assertThat(r.path("restart").asBoolean()).isTrue();assertThat(r.path("events").size()).isZero();}
+ @Test void forwardSequenceDiscontinuityAndLatePacketAreExplicit(){var d=decoder();read(d,packet(1,1,1000,template(FIELDS)));var r=read(d,packet(1,4,1100,data(FIELDS,6,1,1)));assertThat(r.path("sequenceGap").asBoolean()).isTrue();var late=read(d,packet(1,3,1050,data(FIELDS,6,1,1)));assertThat(late.path("qualityFlags").toString()).contains("OUT_OF_ORDER");}
+ @Test void poolExhaustionIsKeptWithoutFakeTuple(){int[][] f={{283,4},{230,1}};var r=read(decoder(),packet(1,1,1000,template(f),data(f,0,3,0)));var e=r.path("events").get(0);assertThat(e.path("eventType").asString()).isEqualTo("POOL_EXHAUSTED");assertThat(e.path("privateIp").isNull()).isTrue();assertThat(e.path("poolId").asInt()).isEqualTo(42);}
+ @Test void portBlockAllocationDoesNotInventOrdinarySessionCreate(){int[][] f={{8,4},{225,4},{234,4},{4,1},{230,1},{323,8},{361,2},{363,2},{364,2}};var r=read(decoder(),packet(1,1,1000,template(f),data(f,6,1,0)));assertThat(r.path("events").size()).isZero();assertThat(r.path("qualityFlags").toString()).contains("UNSUPPORTED_PORT_BLOCK");}
+ @Test void oldExportPacketCannotMasqueradeAsRestartOrDecodeWithANewerTemplate(){var d=decoder();read(d,packet(1,100,100000,template(FIELDS)));byte[] old=packet(1,1,1000,data(FIELDS,6,1,0));java.nio.ByteBuffer.wrap(old).putInt(8,(int)NOW.minusSeconds(120).getEpochSecond());var r=read(d,old,NOW.plusSeconds(1));assertThat(r.path("restart").asBoolean()).isFalse();assertThat(r.path("events").size()).isZero();assertThat(r.path("qualityFlags").toString()).contains("OUT_OF_ORDER");assertThat(read(d,packet(1,101,101000,data(FIELDS,6,1,0))).path("events").size()).isEqualTo(1);}
+ @Test void missingProtocolAndPortsRemainExplicitUnknowns(){int[][] f={{8,4},{225,4},{230,1},{323,8}};var e=read(decoder(),packet(1,1,1000,template(f),data(f,6,1,0))).path("events").get(0);assertThat(e.path("protocol").isNull()).isTrue();assertThat(e.path("privatePort").isNull()).isTrue();assertThat(e.path("qualityFlags").toString()).contains("PROTOCOL_MISSING","PORT_FIELDS_MISSING");}
+ static byte[] packet(int domain,int seq,int uptime,byte[]... sets){return bytes(out->{out.writeShort(9);out.writeShort(sets.length);out.writeInt(uptime);out.writeInt((int)NOW.getEpochSecond());out.writeInt(seq);out.writeInt(domain);for(byte[] s:sets)out.write(s);});}
+ static byte[] template(int[][] fields){return flowset(0,bytes(out->{out.writeShort(256);out.writeShort(fields.length);for(var f:fields){out.writeShort(f[0]);out.writeShort(f[1]);}}));}
+ static byte[] data(int[][] fields,int protocol,int event,int vrf){return flowset(256,bytes(out->{for(var f:fields){long value=switch(f[0]){case 8->0xc000020aL;case 225->0xc633640aL;case 12,226->0xcb00710aL;case 7->12345;case 227->44000;case 11,228->443;case 234->vrf;case 4->protocol;case 230->event;case 323->NOW.toEpochMilli();case 283->42;default->0;};for(int i=f[1]-1;i>=0;i--)out.writeByte((int)(value >>> (8*i)));}}));}
+ static byte[] flowset(int id,byte[] payload){return bytes(out->{out.writeShort(id);out.writeShort(payload.length+4);out.write(payload);});}
+ interface Write{void accept(DataOutputStream o)throws IOException;}
+ static byte[] bytes(Write w){try{var b=new ByteArrayOutputStream();w.accept(new DataOutputStream(b));return b.toByteArray();}catch(IOException e){throw new AssertionError(e);}}
+}

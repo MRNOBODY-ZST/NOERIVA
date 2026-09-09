@@ -1,0 +1,26 @@
+# Rendering only. Reserved example addresses are not deployable services.
+runtime:
+  existingSecret: noeriva-runtime
+  r2dbcUrl: r2dbc:mysql://mysql.example.invalid:3306/noeriva?sslMode=VERIFY_IDENTITY
+  flywayUrl: jdbc:mysql://mysql.example.invalid:3306/noeriva?sslMode=VERIFY_IDENTITY
+  redisHost: redis.example.invalid
+  kafkaBootstrapServers: kafka.example.invalid:9093
+  clickhouseUrl: https://clickhouse.example.invalid:8443
+  metricsUrl: https://metrics.example.invalid
+networkPolicy:
+  deviceEgress:
+    - to:
+        - ipBlock: {cidr: 10.30.0.0/24}
+      ports:
+        - {protocol: UDP, port: 161}
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 22}
+  dataPlaneEgress:
+    - to:
+        - ipBlock: {cidr: 192.0.2.0/24}
+      ports:
+        - {protocol: TCP, port: 3306}
+        - {protocol: TCP, port: 6379}
+        - {protocol: TCP, port: 9093}
+        - {protocol: TCP, port: 8443}
+        - {protocol: TCP, port: 443}

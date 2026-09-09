@@ -1,0 +1,51 @@
+spring:
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:mysql://localhost:13306/noeriva}
+    username: ${SPRING_R2DBC_USERNAME:noeriva}
+    password: ${SPRING_R2DBC_PASSWORD:${NOERIVA_DB_PASSWORD}}
+    pool:
+      initial-size: 4
+      max-size: 24
+      max-acquire-time: 3s
+      max-idle-time: 15m
+  flyway:
+    url: ${SPRING_FLYWAY_URL:jdbc:mysql://localhost:13306/noeriva}
+    user: ${SPRING_R2DBC_USERNAME:noeriva}
+    password: ${SPRING_FLYWAY_PASSWORD:${NOERIVA_DB_PASSWORD}}
+    clean-disabled: true
+  data.redis:
+    host: ${SPRING_DATA_REDIS_HOST:localhost}
+    port: ${SPRING_DATA_REDIS_PORT:16379}
+    password: ${SPRING_DATA_REDIS_PASSWORD:${NOERIVA_REDIS_PASSWORD}}
+    timeout: 1s
+    connect-timeout: 1s
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 5000
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        compression.type: lz4
+        linger.ms: 5
+        batch.size: 65536
+        buffer.memory: 33554432
+    consumer:
+      group-id: noeriva-state-projector-v1
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 100
+      properties:
+        isolation.level: read_committed
+        max.poll.interval.ms: 300000
+    listener:
+      ack-mode: record
+      concurrency: 3
+logging:
+  structured.format.console: ecs

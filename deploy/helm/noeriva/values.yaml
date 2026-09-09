@@ -1,0 +1,97 @@
+# Production data-plane services are provisioned and operated separately.
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
+serviceAccount:
+  create: true
+  name: ""
+control:
+  topologySpreadWhenUnsatisfiable: ScheduleAnyway
+  image:
+    repository: noeriva/control
+    tag: 0.1.0
+    digest: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: '2', memory: 1Gi}
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 65
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+worker:
+  nodeSelector: {}
+  applicationCollectorEnabled: false
+  natReceiver:
+    enabled: false
+    port: 2055
+    nodePort: 32055
+    allowedSources: []
+  # Same control image; one assigned organization, separate from API autoscaling.
+  enabled: true
+  topologySpreadWhenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: '1', memory: 1Gi}
+console:
+  topologySpreadWhenUnsatisfiable: ScheduleAnyway
+  image:
+    repository: noeriva/console
+    tag: 0.1.0
+    digest: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 128Mi}
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+runtime:
+  organizationId: default
+  # Restrict this to the managed device networks. HTTPS/SNMP read-only traffic only.
+  deviceAllowedCidrs: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"]
+  # An existing Secret supplies passwords; no credentials are rendered by Helm.
+  existingSecret: ""
+  r2dbcUrl: ""
+  flywayUrl: ""
+  databaseUsername: noeriva
+  redisHost: ""
+  redisPort: 6379
+  redisSsl: true
+  kafkaBootstrapServers: ""
+  kafkaSecurityProtocol: SSL
+  clickhouseUrl: ""
+  clickhouseUsername: noeriva
+  metricsUrl: ""
+  elasticsearchUrl: ""
+  elasticsearchUsername: elastic
+  extraEnv: []
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tlsSecretName: ""
+  annotations: {}
+networkPolicy:
+  enabled: true
+  # Set these labels to match your actual ingress controller namespace/pods.
+  ingressNamespaceSelector:
+    kubernetes.io/metadata.name: ingress-nginx
+  ingressPodSelector:
+    app.kubernetes.io/name: ingress-nginx
+  observabilityNamespaceSelector:
+    kubernetes.io/metadata.name: noeriva-observability
+  # Explicit selectors/CIDRs and ports for managed DB/Kafka/metrics endpoints.
+  # Empty denies control egress except DNS until deployment values specify it.
+  dataPlaneEgress: []
+  # Explicit device CIDRs + UDP/161, TCP/443 and TCP/22 for SSH (or configured custom ports).
+  # Applies to API manual reads and worker periodic reads; empty denies device egress.
+  deviceEgress: []
+nodeSelector: {}
+tolerations: []
