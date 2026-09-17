@@ -77,6 +77,8 @@ jobs:
           NOERIVA_DB_ROOT_PASSWORD: ci-placeholder-not-a-secret
           NOERIVA_REDIS_PASSWORD: ci-placeholder-not-a-secret
           NOERIVA_CLICKHOUSE_PASSWORD: ci-placeholder-not-a-secret
+          NOERIVA_ELASTICSEARCH_PASSWORD: ci-placeholder-not-a-secret
+          NOERIVA_CREDENTIAL_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           NOERIVA_BOOTSTRAP_PASSWORD: ci-placeholder-not-a-secret
           NOERIVA_COLLECTOR_PASSWORD: ci-placeholder-not-a-secret
           NOERIVA_GRAFANA_PASSWORD: ci-placeholder-not-a-secret
