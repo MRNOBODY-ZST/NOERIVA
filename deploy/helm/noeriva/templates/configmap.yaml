@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "noeriva.fullname" . }}-runtime
+  labels:
+    {{- include "noeriva.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: production
+  NOERIVA_ORGANIZATION_ID: {{ .Values.runtime.organizationId | quote }}
+  SPRING_R2DBC_URL: {{ required "runtime.r2dbcUrl must point to your managed MySQL" .Values.runtime.r2dbcUrl | quote }}
+  SPRING_R2DBC_USERNAME: {{ .Values.runtime.databaseUsername | quote }}
+  SPRING_FLYWAY_URL: {{ required "runtime.flywayUrl must point to your managed MySQL" .Values.runtime.flywayUrl | quote }}
+  SPRING_FLYWAY_USER: {{ .Values.runtime.databaseUsername | quote }}
+  SPRING_DATA_REDIS_HOST: {{ required "runtime.redisHost is required" .Values.runtime.redisHost | quote }}
+  SPRING_DATA_REDIS_PORT: {{ .Values.runtime.redisPort | quote }}
+  SPRING_DATA_REDIS_SSL_ENABLED: {{ .Values.runtime.redisSsl | quote }}
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: {{ required "runtime.kafkaBootstrapServers is required" .Values.runtime.kafkaBootstrapServers | quote }}
+  SPRING_KAFKA_SECURITY_PROTOCOL: {{ .Values.runtime.kafkaSecurityProtocol | quote }}
+  NOERIVA_CLICKHOUSE_URL: {{ required "runtime.clickhouseUrl is required" .Values.runtime.clickhouseUrl | quote }}
+  NOERIVA_CLICKHOUSE_USERNAME: {{ .Values.runtime.clickhouseUsername | quote }}
+  NOERIVA_METRICS_URL: {{ required "runtime.metricsUrl is required" .Values.runtime.metricsUrl | quote }}
+  NOERIVA_ELASTICSEARCH_URL: {{ .Values.runtime.elasticsearchUrl | quote }}
+  NOERIVA_ELASTICSEARCH_USERNAME: {{ .Values.runtime.elasticsearchUsername | quote }}
+  NOERIVA_DEVICE_ALLOWED_CIDRS: {{ join "," .Values.runtime.deviceAllowedCidrs | quote }}
+  NOERIVA_DEVICE_POLLING_AVAILABLE: {{ .Values.worker.enabled | quote }}
+  SERVER_SHUTDOWN: graceful
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: 30s
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError

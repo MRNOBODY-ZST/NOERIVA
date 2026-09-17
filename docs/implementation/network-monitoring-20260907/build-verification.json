@@ -1,0 +1,25 @@
+{
+  "verifiedAt": "2026-09-07T05:49:46.035134+00:00",
+  "backendTests": {
+    "tests": 294,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "testRunBoundary": "Full clean verify plus subsequent focused regressions; one optional external-cluster test skipped.",
+  "frontendTests": {
+    "tests": 80,
+    "failed": 0
+  },
+  "jarSha256": "315c04f5f2300a51f2ec9ce8b3b31183d4fe269263d0cf3e9418be2320485975",
+  "images": {
+    "control": {
+      "tag": "noeriva/control:20260907-monitoring-r3",
+      "id": "sha256:039b821946b61d9303a6eace537d89f0b37e40d4513d8c0e1e269ccd5853e698"
+    },
+    "console": {
+      "tag": "noeriva/console:20260907-monitoring-r2",
+      "id": "sha256:0c54ed343444ae4e0b7669a9ad0aff98f4800fab1f2c903cdfcb1905d17f2f69"
+    }
+  }
+}

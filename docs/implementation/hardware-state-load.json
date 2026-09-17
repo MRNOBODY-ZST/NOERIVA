@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-09-06T19:25:27.466887+00:00",
+  "requests": 160,
+  "concurrency": 16,
+  "errors": 0,
+  "medianMs": 23.59,
+  "p95Ms": 85.58,
+  "maxMs": 106.63,
+  "scope": "Local device collection-state reads while six real hardware collectors and two protocol simulators run; not a production capacity claim"
+}

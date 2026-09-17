@@ -1,0 +1,5 @@
+**
+!services/
+!services/noeriva-control/
+!services/noeriva-control/target/
+!services/noeriva-control/target/noeriva-control-0.1.0-SNAPSHOT.jar

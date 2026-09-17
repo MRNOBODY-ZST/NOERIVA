@@ -1,0 +1,312 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-data-mysql
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      noeriva.io/data-plane: 'true'
+      app.kubernetes.io/component: mysql
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva
+        matchExpressions:
+        - key: app.kubernetes.io/component
+          operator: In
+          values:
+          - control
+          - worker
+    ports:
+    - protocol: TCP
+      port: 3306
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-data-redis
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      noeriva.io/data-plane: 'true'
+      app.kubernetes.io/component: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva
+        matchExpressions:
+        - key: app.kubernetes.io/component
+          operator: In
+          values:
+          - control
+          - worker
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-data-kafka
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      noeriva.io/data-plane: 'true'
+      app.kubernetes.io/component: kafka
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva
+        matchExpressions:
+        - key: app.kubernetes.io/component
+          operator: In
+          values:
+          - control
+          - worker
+    ports:
+    - protocol: TCP
+      port: 9092
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva-bootstrap
+          noeriva.io/bootstrap-for: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+  - from:
+    - podSelector:
+        matchLabels:
+          noeriva.io/data-plane: 'true'
+          app.kubernetes.io/component: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+    - protocol: TCP
+      port: 9093
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - podSelector:
+        matchLabels:
+          noeriva.io/data-plane: 'true'
+          app.kubernetes.io/component: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+    - protocol: TCP
+      port: 9093
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-data-clickhouse
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      noeriva.io/data-plane: 'true'
+      app.kubernetes.io/component: clickhouse
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva
+        matchExpressions:
+        - key: app.kubernetes.io/component
+          operator: In
+          values:
+          - control
+          - worker
+    ports:
+    - protocol: TCP
+      port: 8123
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva-bootstrap
+          noeriva.io/bootstrap-for: clickhouse
+    ports:
+    - protocol: TCP
+      port: 9000
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-data-victoriametrics
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      noeriva.io/data-plane: 'true'
+      app.kubernetes.io/component: victoriametrics
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: noeriva
+        matchExpressions:
+        - key: app.kubernetes.io/component
+          operator: In
+          values:
+          - control
+          - worker
+    ports:
+    - protocol: TCP
+      port: 8428
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-bootstrap-kafka
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-bootstrap
+      noeriva.io/bootstrap-for: kafka
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress: []
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - podSelector:
+        matchLabels:
+          noeriva.io/data-plane: 'true'
+          app.kubernetes.io/component: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noeriva-bootstrap-clickhouse
+  namespace: noeriva-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: noeriva-bootstrap
+      noeriva.io/bootstrap-for: clickhouse
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress: []
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - podSelector:
+        matchLabels:
+          noeriva.io/data-plane: 'true'
+          app.kubernetes.io/component: clickhouse
+    ports:
+    - protocol: TCP
+      port: 9000

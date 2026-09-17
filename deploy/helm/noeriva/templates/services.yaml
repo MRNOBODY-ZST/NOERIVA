@@ -1,0 +1,40 @@
+{{- $root := . -}}
+{{- range $component := list "control" "console" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "noeriva.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "noeriva.labels" $root | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+  selector:
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}
+
+{{- if and .Values.worker.enabled .Values.worker.natReceiver.enabled }}
+{{- if empty .Values.worker.natReceiver.allowedSources }}
+{{- fail "worker.natReceiver.allowedSources must restrict permitted exporter CIDRs" }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "noeriva.fullname" . }}-nat-hsl
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  ports:
+    - name: nat-hsl
+      port: {{ .Values.worker.natReceiver.port }}
+      targetPort: nat-hsl
+      protocol: UDP
+      nodePort: {{ .Values.worker.natReceiver.nodePort }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: worker
+{{- end }}

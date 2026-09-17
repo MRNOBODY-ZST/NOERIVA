@@ -1,0 +1,9 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.1.1</version><relativePath/></parent>
+  <groupId>io.noeriva</groupId><artifactId>noeriva-parent</artifactId><version>0.1.0-SNAPSHOT</version><packaging>pom</packaging>
+  <name>NOERIVA</name>
+  <properties><java.version>25</java.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><r2dbc-mysql.version>1.4.3</r2dbc-mysql.version></properties>
+  <modules><module>services/noeriva-query</module><module>services/noeriva-control</module></modules>
+  <build><pluginManagement><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><configuration><argLine>-XX:+EnableDynamicAgentLoading</argLine></configuration></plugin></plugins></pluginManagement></build>
+</project>

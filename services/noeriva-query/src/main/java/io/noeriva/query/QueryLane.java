@@ -1,0 +1,2 @@
+package io.noeriva.query;
+public enum QueryLane { INTERACTIVE_STATE, INTERACTIVE_CHART, INVESTIGATION, BATCH_EXPORT, REPLAY_REBUILD }

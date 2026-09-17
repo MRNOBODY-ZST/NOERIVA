@@ -1,0 +1,301 @@
+name: noeriva
+
+# COMPACT is a local verification profile. None of these single instances is HA.
+services:
+  mysql:
+    image: mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: noeriva
+      MYSQL_USER: noeriva
+      MYSQL_PASSWORD: ${NOERIVA_DB_PASSWORD:?Generate the local .env first}
+      MYSQL_ROOT_PASSWORD: ${NOERIVA_DB_ROOT_PASSWORD:?Generate the local .env first}
+    ports: ["127.0.0.1:${NOERIVA_MYSQL_PORT:-13306}:3306"]
+    volumes: ["mysql-data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u $$MYSQL_USER -D noeriva -e 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.5
+
+  redis:
+    image: redis:8.2.9-alpine@sha256:30abb90e62f14b737010746def3ba99cc79fe19dcdb3d37b41f21fc62e7da19d
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${NOERIVA_REDIS_PASSWORD:?Generate the local .env first}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory 192mb --maxmemory-policy allkeys-lru --save '' --appendonly no"]
+    ports: ["127.0.0.1:${NOERIVA_REDIS_PORT:-16379}:6379"]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 256m
+    cpus: 0.5
+
+  kafka:
+    image: apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837
+    restart: unless-stopped
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://127.0.0.1:${NOERIVA_KAFKA_PORT:-19092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # No automatic age/size deletion in this development evidence pipeline.
+      KAFKA_LOG_RETENTION_HOURS: -1
+      KAFKA_LOG_RETENTION_BYTES: -1
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    ports: ["127.0.0.1:${NOERIVA_KAFKA_PORT:-19092}:19092"]
+    volumes: ["kafka-data:/var/lib/kafka/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+    mem_limit: 1g
+    cpus: 1.5
+
+  kafka-init:
+    image: apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837
+    depends_on:
+      kafka: {condition: service_healthy}
+    entrypoint: ["/bin/bash", "-euc"]
+    command:
+      - >-
+        for topic in noeriva.events.v1 noeriva.events.dlq.v1 noeriva.control.v1;
+        do /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092
+        --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1
+        --config min.insync.replicas=1 --config retention.ms=-1 --config retention.bytes=-1;
+        done
+    mem_limit: 384m
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.8.2.7@sha256:fa394da808cc53f76d0344429421d6c422a6ee85fe7450135c0e3cff4df9bcbb
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: noeriva
+      CLICKHOUSE_USER: noeriva
+      CLICKHOUSE_PASSWORD: ${NOERIVA_CLICKHOUSE_PASSWORD:?Generate the local .env first}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports: ["127.0.0.1:${NOERIVA_CLICKHOUSE_PORT:-18123}:8123"]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/initdb:/docker-entrypoint-initdb.d:ro
+      - ./clickhouse/config.xml:/etc/clickhouse-server/config.d/noeriva.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+    mem_limit: 2g
+    cpus: 2
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.151.0@sha256:6d164540a04f49ba4e696cbdb70f9fee78be1e94b8f2a1292743a0b1ab8275bd
+    restart: unless-stopped
+    command:
+      - -storageDataPath=/storage
+      # Local numeric metrics only. This is not the raw evidence store.
+      - -retentionPeriod=100y
+      - -memory.allowedPercent=60
+      - -search.maxQueryDuration=5s
+      - -search.maxConcurrentRequests=8
+      - -search.maxSamplesPerSeries=100000
+      - -search.maxUniqueTimeseries=100
+    ports: ["127.0.0.1:${NOERIVA_VM_PORT:-18428}:8428"]
+    volumes: ["vm-data:/storage"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8428/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 768m
+    cpus: 1
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.151.0@sha256:ff6168d22b523d0bc3db1a0fedd0dafd37a77dba75489120464c39fadbfa1ff7
+    restart: unless-stopped
+    command:
+      - -promscrape.config=/etc/vmagent/scrape.yml
+      - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+      - -remoteWrite.tmpDataPath=/queue
+      - -remoteWrite.maxDiskUsagePerURL=1GB
+      - -memory.allowedBytes=134217728
+    volumes:
+      - ../../observability/vmagent/scrape.yml:/etc/vmagent/scrape.yml:ro
+      - ../../.local/metrics-password:/etc/vmagent/metrics-password:ro
+      - vmagent-queue:/queue
+    depends_on:
+      victoriametrics: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8429/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 256m
+    cpus: 0.5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.3
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: 'true'
+      xpack.security.http.ssl.enabled: 'false'
+      xpack.security.transport.ssl.enabled: 'false'
+      xpack.ml.enabled: 'false'
+      node.store.allow_mmap: 'false'
+      ES_JAVA_OPTS: '-Xms512m -Xmx512m'
+      ELASTIC_PASSWORD: ${NOERIVA_ELASTICSEARCH_PASSWORD:?Run scripts/init-env.py}
+    ports: ['127.0.0.1:${NOERIVA_ELASTICSEARCH_PORT:-19200}:9200']
+    volumes: ['elasticsearch-data:/usr/share/elasticsearch/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS -u "elastic:$$ELASTIC_PASSWORD" "http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=3s" >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 45
+    mem_limit: 2g
+    cpus: 2
+
+  control:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.control
+    image: noeriva/control:0.1.0
+    restart: unless-stopped
+    environment: &control-environment
+      SPRING_PROFILES_ACTIVE: production
+      NOERIVA_ORGANIZATION_ID: ${NOERIVA_ORGANIZATION_ID:-default}
+      NOERIVA_ROLLUP_ENABLED: "false"
+      NOERIVA_CREDENTIAL_KEY: ${NOERIVA_CREDENTIAL_KEY:?Run scripts/init-env.py}
+      NOERIVA_DEVICE_COLLECTOR_ENABLED: "false"
+      NOERIVA_DEVICE_POLLING_AVAILABLE: "true"
+      NOERIVA_DEVICE_ALLOWED_CIDRS: ${NOERIVA_DEVICE_ALLOWED_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
+      NOERIVA_DB_PASSWORD: ${NOERIVA_DB_PASSWORD:?Generate the local .env first}
+      NOERIVA_REDIS_PASSWORD: ${NOERIVA_REDIS_PASSWORD:?Generate the local .env first}
+      SPRING_R2DBC_URL: r2dbc:mysql://mysql:3306/noeriva
+      SPRING_R2DBC_USERNAME: noeriva
+      SPRING_R2DBC_PASSWORD: ${NOERIVA_DB_PASSWORD:?Generate the local .env first}
+      SPRING_FLYWAY_URL: jdbc:mysql://mysql:3306/noeriva?allowPublicKeyRetrieval=true&sslMode=DISABLED
+      SPRING_FLYWAY_USER: noeriva
+      SPRING_FLYWAY_PASSWORD: ${NOERIVA_DB_PASSWORD:?Generate the local .env first}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${NOERIVA_REDIS_PASSWORD:?Generate the local .env first}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      NOERIVA_CLICKHOUSE_URL: http://clickhouse:8123
+      NOERIVA_CLICKHOUSE_USERNAME: noeriva
+      NOERIVA_CLICKHOUSE_PASSWORD: ${NOERIVA_CLICKHOUSE_PASSWORD:?Generate the local .env first}
+      NOERIVA_ELASTICSEARCH_URL: http://elasticsearch:9200
+      NOERIVA_ELASTICSEARCH_USERNAME: elastic
+      NOERIVA_ELASTICSEARCH_PASSWORD: ${NOERIVA_ELASTICSEARCH_PASSWORD:?Run scripts/init-env.py}
+      NOERIVA_METRICS_URL: http://victoriametrics:8428
+      NOERIVA_BOOTSTRAP_PASSWORD: ${NOERIVA_BOOTSTRAP_PASSWORD:?Generate the local .env first}
+      NOERIVA_COLLECTOR_PASSWORD: ${NOERIVA_COLLECTOR_PASSWORD:?Generate the local .env first}
+      NOERIVA_METRICS_PASSWORD: ${NOERIVA_METRICS_PASSWORD:?Generate the local .env first}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError
+    ports: ["127.0.0.1:${NOERIVA_API_PORT:-18080}:8080"]
+    depends_on: &data-dependencies
+      elasticsearch: {condition: service_healthy}
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      kafka-init: {condition: service_completed_successfully}
+      clickhouse: {condition: service_healthy}
+      victoriametrics: {condition: service_healthy}
+    stop_grace_period: 40s
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    cpus: 2
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.control
+    image: noeriva/control:0.1.0
+    restart: unless-stopped
+    environment:
+      <<: *control-environment
+      NOERIVA_ROLLUP_ENABLED: "true"
+      NOERIVA_DEVICE_COLLECTOR_ENABLED: "true"
+    depends_on: *data-dependencies
+    # One scheduler for the assigned organization; no published application port.
+    stop_grace_period: 40s
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    cpus: 1
+
+  console:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.console
+    image: noeriva/console:0.1.0
+    environment:
+      NOERIVA_API_UPSTREAM: http://control:8080
+    restart: unless-stopped
+    ports: ["127.0.0.1:${NOERIVA_CONSOLE_PORT:-18000}:8080"]
+    depends_on: [control]
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777", "/var/cache/nginx:size=16m,mode=1777", "/var/run:size=1m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    cpus: 0.5
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:13.2.1@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${NOERIVA_GRAFANA_PASSWORD:?Generate the local .env first}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports: ["127.0.0.1:${NOERIVA_GRAFANA_PORT:-13000}:3000"]
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [victoriametrics]
+    mem_limit: 384m
+
+  otel-collector:
+    profiles: [observability]
+    image: otel/opentelemetry-collector-contrib:0.159.0@sha256:1f2c54a30e713fac6b3ae77a1ec84010c2007e29ced8ec666214fc2f6739c1cc
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes: ["../../observability/otel/collector.yaml:/etc/otelcol/config.yaml:ro"]
+    ports: ["127.0.0.1:14317:4317", "127.0.0.1:14318:4318"]
+    mem_limit: 256m
+
+volumes:
+  elasticsearch-data:
+  mysql-data:
+  kafka-data:
+  clickhouse-data:
+  vm-data:
+  vmagent-queue:
+  grafana-data:

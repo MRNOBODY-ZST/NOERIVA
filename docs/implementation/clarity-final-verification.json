@@ -1,0 +1,112 @@
+{
+  "verifiedAt": "2026-09-06T09:50:50.713877+00:00",
+  "mode": "CONNECTED",
+  "cuaPersistedIncidents": [
+    {
+      "id": "160dc1d1-e859-4cdb-87bd-652b5949aeb5",
+      "title": "Mock · CUA 告警联动与处置验证",
+      "status": "RESOLVED",
+      "revision": 2
+    },
+    {
+      "id": "7d81c6b1-1d67-4d84-a274-9ae123fd76c7",
+      "title": "Mock · CUA 创建弹窗修复复验",
+      "status": "OPEN",
+      "revision": 1
+    }
+  ],
+  "downloadedEvidence": {
+    "file": "/Users/hades/Downloads/evidence-6b4ad5cc-d220-4aa1-93d5-fd0054469912.json",
+    "sha256Matches": true,
+    "integrity": "UNSIGNED",
+    "worm": false
+  },
+  "cuaCheckToggle": {
+    "id": "cfce539b-0ee3-4565-9bc9-1089f2048c3e",
+    "enabled": true,
+    "revision": 3,
+    "lastResult": null
+  },
+  "browserFinalConsoleErrors": 0,
+  "responsive": [
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "pages": [
+        "overview",
+        "investigator",
+        "incidents"
+      ],
+      "createDialogFits": true
+    },
+    {
+      "width": 768,
+      "documentWidth": 768,
+      "pages": [
+        "incidents"
+      ]
+    }
+  ],
+  "browserViewportRestored": true,
+  "frontendTests": 32,
+  "backendTests": 108,
+  "openapiOperations": 49,
+  "helmLint": "PASS",
+  "helmRender": "PASS",
+  "actualKubernetesDeployment": "NOT_RUN",
+  "cuaEnterSearch": {
+    "network": {
+      "mock-cua": 1,
+      "zz-cua-no-interface": 0
+    },
+    "monitoring": {
+      "mock-cua": 1
+    },
+    "evidence": {
+      "zz-cua-no-evidence": 0
+    },
+    "checks": {
+      "Mock · BMC": 1
+    },
+    "consoleErrors": 0
+  },
+  "finalServices": [
+    {
+      "service": "clickhouse",
+      "state": "running"
+    },
+    {
+      "service": "console",
+      "state": "running"
+    },
+    {
+      "service": "control",
+      "state": "running"
+    },
+    {
+      "service": "kafka",
+      "state": "running"
+    },
+    {
+      "service": "mysql",
+      "state": "running"
+    },
+    {
+      "service": "redis",
+      "state": "running"
+    },
+    {
+      "service": "victoriametrics",
+      "state": "running"
+    },
+    {
+      "service": "vmagent",
+      "state": "running"
+    },
+    {
+      "service": "worker",
+      "state": "running"
+    }
+  ],
+  "finalConsoleImage": "sha256:09e873a58c28db3dcd4ab5fa8b432f0d73ba021d87a5a623b9b07a4be0f6f2a0"
+}

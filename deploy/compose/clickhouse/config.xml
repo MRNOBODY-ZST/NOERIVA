@@ -1,0 +1,18 @@
+<clickhouse>
+  <logger>
+    <level>warning</level>
+    <size>4M</size>
+    <count>2</count>
+    <console>1</console>
+  </logger>
+  <max_server_memory_usage_to_ram_ratio>0.7</max_server_memory_usage_to_ram_ratio>
+  <max_concurrent_queries>12</max_concurrent_queries>
+  <background_schedule_pool_size>4</background_schedule_pool_size>
+  <prometheus>
+    <endpoint>/metrics</endpoint>
+    <port>9363</port>
+    <metrics>true</metrics>
+    <events>true</events>
+    <asynchronous_metrics>true</asynchronous_metrics>
+  </prometheus>
+</clickhouse>

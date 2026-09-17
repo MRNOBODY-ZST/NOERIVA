@@ -1,0 +1,23 @@
+{
+  "kind": "LOCAL_COMPACT_MIXED_READ_SMOKE",
+  "asOf": "2026-09-06T09:25:59.823229Z",
+  "requests": 640,
+  "concurrency": 32,
+  "durationSeconds": 1.705,
+  "requestsPerSecond": 375.38,
+  "p50Ms": 90.87,
+  "p95Ms": 172.34,
+  "p99Ms": 202.74,
+  "statuses": {
+    "200": 640
+  },
+  "queries": [
+    "/workspace/monitoring?limit=30",
+    "/workspace/interfaces?limit=30",
+    "/workbench/incidents?limit=30",
+    "/workbench/evidence?limit=30",
+    "/workbench/configuration/snapshots?limit=30",
+    "/workbench/checks?limit=30"
+  ],
+  "caveat": "Loopback Docker API; bounded current projections and small synthetic workbench records. Not a production capacity or long-history SLO validation."
+}

@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: noeriva-mysql
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: mysql
+    noeriva.io/data-plane: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: mysql
+    noeriva.io/data-plane: 'true'
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: mysql
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noeriva-redis
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: redis
+    noeriva.io/data-plane: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: redis
+    noeriva.io/data-plane: 'true'
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noeriva-kafka
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: kafka
+    noeriva.io/data-plane: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: kafka
+    noeriva.io/data-plane: 'true'
+  ports:
+  - name: broker
+    port: 9092
+    targetPort: broker
+    protocol: TCP
+  - name: controller
+    port: 9093
+    targetPort: controller
+    protocol: TCP
+  publishNotReadyAddresses: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noeriva-clickhouse
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: clickhouse
+    noeriva.io/data-plane: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: clickhouse
+    noeriva.io/data-plane: 'true'
+  ports:
+  - name: http
+    port: 8123
+    targetPort: http
+    protocol: TCP
+  - name: native
+    port: 9000
+    targetPort: native
+    protocol: TCP
+  - name: metrics
+    port: 9363
+    targetPort: metrics
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noeriva-victoriametrics
+  namespace: noeriva-system
+  labels:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: victoriametrics
+    noeriva.io/data-plane: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: noeriva-data
+    app.kubernetes.io/part-of: noeriva
+    app.kubernetes.io/component: victoriametrics
+    noeriva.io/data-plane: 'true'
+  ports:
+  - name: http
+    port: 8428
+    targetPort: http
+    protocol: TCP

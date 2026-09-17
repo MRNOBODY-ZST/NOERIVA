@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "mode": "CONNECTED_COMPOSE",
+  "synthetic": true,
+  "runId": "dc6247b63eb2",
+  "deviceId": "c8f126a4-c344-4478-a71f-5069604db9a0",
+  "interfaceId": "beed829e-5f5e-4bbf-ba74-16ab564e69ee",
+  "jobId": "61ec8fd8-8759-4138-a251-47725e74e94f",
+  "jobStatus": "SUCCEEDED",
+  "bucketCount": 12,
+  "from": "2026-09-06T04:00:00Z",
+  "to": "2026-09-06T05:00:00Z",
+  "observedCells": 1,
+  "averageBps": 800.0,
+  "checks": [
+    "actual VM import/export",
+    "durable administrative job",
+    "independent container worker",
+    "12 replacement ClickHouse buckets",
+    "historical one-hour heatmap value 800 bps",
+    "167 other cells remain missing/future"
+  ]
+}

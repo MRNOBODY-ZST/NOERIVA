@@ -1,0 +1,86 @@
+{
+  "observedAt": "2026-09-07T04:19:28.261835+00:00",
+  "passed": true,
+  "readOnly": true,
+  "scope": "Six-asset deployment acceptance; not a production capacity claim",
+  "entrypoints": {
+    "62": {
+      "assets": 6,
+      "candidates": 26,
+      "linkedCandidates": 1,
+      "overviewHistoryAvailable": true,
+      "enabledFreshCollections": 6,
+      "collectionStatusCounts": {
+        "RUNNING": 4,
+        "SUCCESS": 1,
+        "PARTIAL": 1
+      },
+      "imanaTemperatureSeries": 3,
+      "imanaNumericPointCounts": [
+        91,
+        91,
+        91
+      ],
+      "sseCollectionEvents": 1,
+      "sseSlots": 1,
+      "httpStatusCounts": {
+        "200": 100
+      }
+    },
+    "63": {
+      "assets": 6,
+      "candidates": 26,
+      "linkedCandidates": 1,
+      "overviewHistoryAvailable": true,
+      "enabledFreshCollections": 6,
+      "collectionStatusCounts": {
+        "RUNNING": 4,
+        "PARTIAL": 2
+      },
+      "imanaTemperatureSeries": 3,
+      "imanaNumericPointCounts": [
+        91,
+        91,
+        91
+      ],
+      "sseCollectionEvents": 1,
+      "sseSlots": 1,
+      "httpStatusCounts": {
+        "200": 100
+      }
+    }
+  },
+  "errors": [],
+  "load": {
+    "requests": 160,
+    "concurrency": 16,
+    "successfulReads": 160,
+    "entrypointReadCounts": {
+      "62": 80,
+      "63": 80
+    },
+    "routeReadCounts": {
+      "devices": 16,
+      "monitoring": 16,
+      "interfaces": 16,
+      "alerts": 16,
+      "topology": 16,
+      "workspaceOverview": 16,
+      "search": 16,
+      "events": 16,
+      "overview": 16,
+      "collectors": 16
+    },
+    "errorCounts": {},
+    "transportWarmupMs": 3284.46,
+    "transportWarmupHttpRequests": 0,
+    "elapsedMs": 972.28,
+    "latencyScope": "Client wall time: request construction, TCP/HTTP, body read, JSON and assertions; excludes thread/opener initialization and executor queue wait. Not server-only latency; no HTTP warmup or connection pool.",
+    "latencyMs": {
+      "min": 14.18,
+      "median": 81.72,
+      "p95": 217.24,
+      "max": 430.86
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-09-06T13:21:10.561530+00:00",
+  "method": "Computer Use, existing Edge browser tab, local connected console",
+  "realHardwareTested": false,
+  "deviceDetailReload": "PASS: SPA login and same Redfish detail restored",
+  "trendWithoutManualRefresh": {
+    "status": "PASS",
+    "newRawObservationLocalTime": "2026-09-06 21:18:18 Asia/Shanghai",
+    "temperatureCelsius": 23.5,
+    "powerWatts": 180,
+    "tableContainsNewQueryWindow": true
+  },
+  "redfishPeriodic": {
+    "enabled": true,
+    "connectionRevision": 5,
+    "lastSuccessfulObservationLocalTime": "2026-09-06 21:20:26 Asia/Shanghai",
+    "intervalSeconds": 60,
+    "result": "PARTIAL",
+    "expectedQualityFlags": [
+      "PARTIAL",
+      "READING_UNAVAILABLE"
+    ]
+  },
+  "browserErrorsAndWarnings": [],
+  "mobileViewport": {
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": false
+  },
+  "notes": [
+    "Synthetic fixtures only. Sensor warning and missing reading are intentional.",
+    "Frontend reload requires reauthentication; credentials remain session-only."
+  ]
+}

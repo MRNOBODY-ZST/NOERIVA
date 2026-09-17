@@ -1,0 +1,28 @@
+CREATE TABLE rollup_job (
+ id CHAR(36) NOT NULL,
+ organization_id VARCHAR(64) NOT NULL,
+ created_by VARCHAR(120) NOT NULL,
+ device_id VARCHAR(64) NOT NULL,
+ interface_id VARCHAR(64) NOT NULL,
+ source_id VARCHAR(128) NOT NULL,
+ direction VARCHAR(2) NOT NULL,
+ window_from TIMESTAMP(6) NOT NULL,
+ window_to TIMESTAMP(6) NOT NULL,
+ status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+ attempts INT NOT NULL DEFAULT 0,
+ bucket_count INT,
+ error_code VARCHAR(64),
+ lease_owner CHAR(36),
+ lease_until TIMESTAMP(6),
+ created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ PRIMARY KEY (organization_id,id),
+ INDEX rollup_job_queue (organization_id,status,created_at,id),
+ INDEX rollup_job_reclaim (organization_id,status,lease_until),
+ FOREIGN KEY (organization_id,device_id) REFERENCES device(organization_id,id),
+ FOREIGN KEY (organization_id,interface_id) REFERENCES network_interface(organization_id,id),
+ CHECK (direction IN ('rx','tx')),
+ CHECK (status IN ('PENDING','RUNNING','SUCCEEDED','FAILED')),
+ CHECK (window_from < window_to)
+);
+-- No automatic TTL/deletion. Failed jobs retain their owner, original requested window and bounded error code.

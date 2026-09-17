@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: noeriva-system
+resources:
+- services.yaml
+- elasticsearch.yaml
+- statefulsets.yaml
+- initialization-jobs.yaml
+- network-policies.yaml
+configMapGenerator:
+- name: noeriva-clickhouse-config
+  files:
+  - noeriva.xml=config/noeriva.xml
+- name: noeriva-clickhouse-init
+  files:
+  - 001-metric-rollups.sql=config/001-metric-rollups.sql
+  - 002-control-events.sql=config/002-control-events.sql
+  - 003-nat-audit.sql=config/003-nat-audit.sql
+  - 004-application-monitoring.sql=config/004-application-monitoring.sql
+  - 005-nat-receipt-index.sql=config/005-nat-receipt-index.sql

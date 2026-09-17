@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "mode": "CONNECTED",
+  "synthetic": true,
+  "runId": "162b4db324ab",
+  "deviceId": "40e5e82c-00e9-4308-a736-d9cc5da6ab14",
+  "interfaceId": "b1cfddc6-288b-4eee-b9fd-2c273ceae39f",
+  "checks": [
+    "opaque session",
+    "transactional create",
+    "interface ownership",
+    "Kafka durable acceptance",
+    "MySQL projection",
+    "replay idempotence",
+    "ClickHouse history read",
+    "alert acknowledgement",
+    "missing heatmap remains null"
+  ]
+}

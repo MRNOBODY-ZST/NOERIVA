@@ -1,0 +1,45 @@
+{
+  "errors": [],
+  "findings": [
+    {
+      "page": "overview",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "page": "overview",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "page": "overview",
+      "width": 1280,
+      "overflow": false
+    },
+    {
+      "page": "overview",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "page": "overview",
+      "width": 1920,
+      "overflow": false
+    },
+    {
+      "page": "devices",
+      "rowHeights": [
+        44,
+        44,
+        44,
+        44,
+        44
+      ]
+    },
+    {
+      "page": "device",
+      "width": 390,
+      "overflow": false
+    }
+  ]
+}

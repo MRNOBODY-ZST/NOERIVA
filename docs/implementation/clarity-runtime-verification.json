@@ -1,0 +1,153 @@
+{
+  "before": {
+    "clickhouse": {
+      "id": "408ac7d21cbf",
+      "state": "running",
+      "image": "clickhouse/clickhouse-server:26.8.2.7@sha256:fa394da808cc53f76d0344429421d6c422a6ee85fe7450135c0e3cff4df9bcbb"
+    },
+    "console": {
+      "id": "bd9a44d1b090",
+      "state": "running",
+      "image": "noeriva/console:0.1.0"
+    },
+    "control": {
+      "id": "6e4fea4f4359",
+      "state": "running",
+      "image": "noeriva/control:0.1.0"
+    },
+    "kafka": {
+      "id": "748fa9c5a386",
+      "state": "running",
+      "image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
+    },
+    "mysql": {
+      "id": "7d94b3bab129",
+      "state": "running",
+      "image": "mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb"
+    },
+    "redis": {
+      "id": "6302e5a3bdf6",
+      "state": "running",
+      "image": "redis:8.2.9-alpine@sha256:30abb90e62f14b737010746def3ba99cc79fe19dcdb3d37b41f21fc62e7da19d"
+    },
+    "victoriametrics": {
+      "id": "bcf48036f62a",
+      "state": "running",
+      "image": "victoriametrics/victoria-metrics:v1.151.0@sha256:6d164540a04f49ba4e696cbdb70f9fee78be1e94b8f2a1292743a0b1ab8275bd"
+    },
+    "vmagent": {
+      "id": "8a9c2db8c1cf",
+      "state": "running",
+      "image": "victoriametrics/vmagent:v1.151.0@sha256:ff6168d22b523d0bc3db1a0fedd0dafd37a77dba75489120464c39fadbfa1ff7"
+    },
+    "worker": {
+      "id": "18291fa5d005",
+      "state": "running",
+      "image": "noeriva/control:0.1.0"
+    }
+  },
+  "after": {
+    "clickhouse": {
+      "id": "408ac7d21cbf",
+      "state": "running",
+      "image": "clickhouse/clickhouse-server:26.8.2.7@sha256:fa394da808cc53f76d0344429421d6c422a6ee85fe7450135c0e3cff4df9bcbb"
+    },
+    "console": {
+      "id": "bd9a44d1b090",
+      "state": "running",
+      "image": "noeriva/console:0.1.0"
+    },
+    "control": {
+      "id": "f9685db89151",
+      "state": "running",
+      "image": "noeriva/control:0.1.0"
+    },
+    "kafka": {
+      "id": "748fa9c5a386",
+      "state": "running",
+      "image": "apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
+    },
+    "mysql": {
+      "id": "7d94b3bab129",
+      "state": "running",
+      "image": "mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb"
+    },
+    "redis": {
+      "id": "6302e5a3bdf6",
+      "state": "running",
+      "image": "redis:8.2.9-alpine@sha256:30abb90e62f14b737010746def3ba99cc79fe19dcdb3d37b41f21fc62e7da19d"
+    },
+    "victoriametrics": {
+      "id": "bcf48036f62a",
+      "state": "running",
+      "image": "victoriametrics/victoria-metrics:v1.151.0@sha256:6d164540a04f49ba4e696cbdb70f9fee78be1e94b8f2a1292743a0b1ab8275bd"
+    },
+    "vmagent": {
+      "id": "8a9c2db8c1cf",
+      "state": "running",
+      "image": "victoriametrics/vmagent:v1.151.0@sha256:ff6168d22b523d0bc3db1a0fedd0dafd37a77dba75489120464c39fadbfa1ff7"
+    },
+    "worker": {
+      "id": "8de21018082a",
+      "state": "running",
+      "image": "noeriva/control:0.1.0"
+    }
+  },
+  "health": {
+    "control_readiness": "UP",
+    "worker_readiness": "UP",
+    "control_liveness": "UP",
+    "worker_liveness": "UP"
+  },
+  "overviewVerification": {
+    "asOf": "2026-09-06T09:31:07.674641960Z",
+    "devices": 1006,
+    "neverObserved": 1001,
+    "expectedStale": 5,
+    "workspaceStale": 5,
+    "legacyStale": 1006,
+    "siteHealth": [
+      {
+        "siteId": "default",
+        "siteName": "Default site",
+        "timezone": null,
+        "devices": 1006,
+        "critical": 0,
+        "warning": 5,
+        "healthy": 0,
+        "unknown": 1001,
+        "stale": 5
+      }
+    ],
+    "independentInventoryScan": true
+  },
+  "consoleUnchanged": true,
+  "dataContainersUnchanged": true,
+  "consoleProxyWorkspaceStale": 5,
+  "mockReverification": {
+    "deviceId": "0f8131d4-ea69-43c4-976f-4390d0a93f90",
+    "incidentId": "7ec0c144-ef9c-4987-a172-1b0540ea6b12",
+    "records": 72,
+    "investigations": {
+      "54021": "CONFIRMED",
+      "54022": "AMBIGUOUS",
+      "54023": "INSUFFICIENT_EVIDENCE",
+      "54024": "NO_MATCH"
+    },
+    "sha256Verified": true,
+    "redactionVerified": true,
+    "configurationDiff": {
+      "added": 1,
+      "removed": 1
+    },
+    "unobservedCheck": "UNKNOWN",
+    "stateFile": "/Users/hades/NOERIVA/.local/mock-workbench-fixture.json"
+  },
+  "fixtureRecordIdsUnchanged": true,
+  "verifiedAt": "2026-09-06T09:32:07.871334+00:00",
+  "imageIds": {
+    "control": "sha256:0612bd6d20e1afb4712ab949a059cf91eb6f2f909b75022265439f920e17be0e",
+    "worker": "sha256:0612bd6d20e1afb4712ab949a059cf91eb6f2f909b75022265439f920e17be0e",
+    "console": "sha256:827da36eb3b3746c0c3fe3f031a5644c1dabe057423e83693011daac73e3a29c"
+  }
+}
