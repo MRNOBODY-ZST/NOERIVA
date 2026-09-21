@@ -1,0 +1,133 @@
+{
+  "implementationCommit": "49f81de",
+  "platform": "linux/amd64",
+  "backendTests": {
+    "tests": 456,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "frontendTests": {
+    "unitPassed": 126,
+    "browserPassed": 12,
+    "finalApplicationBrowserPassed": 1
+  },
+  "imageArchiveSha256": "18db15210724ddef3b3756c3b8db07c50bcc4066f2e1f2442fde58b319480745",
+  "controlManifest": "sha256:38e51c1bd9ae24782198e8db69f99315f097f7f376590d1d72e7126631cac381",
+  "consoleManifest": "sha256:b101a110733b3102db3b1b3666ed7efca3c322084efaf62f3beaebe9b3db48a1",
+  "consoleIndexSha256": "0a730b294012059b85b756d5ec8d1bf879e7e28f8fc76cec96cb30e54c403377",
+  "controlIndex": "sha256:29ff4e874cb5101dd10629f3c5b510ade7c52a5ee64e9479bfc750696de8c5c6",
+  "controlImage": "noeriva/control:20260921-refinements-r4",
+  "consoleImage": "noeriva/console:20260921-refinements-r2",
+  "finalApplicationTestsPassed": 23,
+  "deployment": {
+    "helmRevision": 22,
+    "status": "deployed",
+    "controlReady": "2/2",
+    "consoleReady": "2/2",
+    "workerReady": "1/1",
+    "migration": "V13 device retirement succeeded",
+    "realAssets": 6,
+    "retiredAssets": 0,
+    "runtimeSecretUnchanged": true,
+    "postConsoleAuthenticatedSessionHttp": 200,
+    "recentControlRequestOrErrorEntries": 0
+  },
+  "apiVerification": {
+    "checkedAt": "2026-09-21T12:46:22Z",
+    "passed": true,
+    "requestMethod": "GET",
+    "statuses": {
+      "session": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.977
+      },
+      "overview": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.592
+      },
+      "assets": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.403
+      },
+      "metric_24h": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.378
+      },
+      "metric_7d": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.523
+      },
+      "device_heatmap": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.641
+      },
+      "interface_directory": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.2
+      },
+      "interface_exact": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.188
+      },
+      "application_sources": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 0.146
+      },
+      "application_24h": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 4.234
+      },
+      "application_7d": {
+        "http": 200,
+        "ok": true,
+        "elapsedSeconds": 20.839
+      }
+    },
+    "metricBuckets": {
+      "24h": 24,
+      "7d": 7
+    },
+    "applicationBuckets": {
+      "24h": 24,
+      "7d": 7
+    },
+    "heatmapCells": 168,
+    "applicationTotalAndMeanAvailable": true
+  },
+  "publicVerification": {
+    "passed": true,
+    "https": "verified",
+    "assets": [
+      {
+        "asset": "index.html",
+        "http": 200,
+        "sha256": "0a730b294012059b85b756d5ec8d1bf879e7e28f8fc76cec96cb30e54c403377",
+        "matchesBuild": true
+      },
+      {
+        "asset": "static/index-CBa8l0Wd.js",
+        "http": 200,
+        "sha256": "0207632dc73f4044a0db215f91c89b34063b85adc08697ae54be7045dada7de9",
+        "matchesBuild": true
+      },
+      {
+        "asset": "static/ApplicationMonitoringPage-CaU1Bt6q.js",
+        "http": 200,
+        "sha256": "9edbe7cdee15bc76970583c06bbf6e22b932f039378c7722a35366e42c815273",
+        "matchesBuild": true
+      }
+    ],
+    "browserLoginPageRendered": true
+  }
+}

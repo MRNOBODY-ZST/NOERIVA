@@ -1,0 +1,159 @@
+{
+  "scope": "Final deployed r3 HTTP SQL and bindings, replayed unchanged against production ClickHouse with two performance settings changed. Read-only SELECT; no persistent configuration or data mutations.",
+  "sameBoundSqlSha256": "D5FA6B30133C481A19D42304C551C4AE77359E3E572BEC3D4B576B5E0B715637",
+  "settingDifferences": {
+    "max_bytes_before_external_group_by": {
+      "failure": "268435456",
+      "success": "0",
+      "note": "Explicitly passed as 0; system.query_log Settings omits this default value."
+    },
+    "max_bytes_ratio_before_external_sort": {
+      "failure": "0.1",
+      "success": "0"
+    },
+    "readonly": {
+      "failure": "0",
+      "success": "1",
+      "note": "Read-only safeguard added to the diagnostic replay."
+    }
+  },
+  "failure": {
+    "event_time": "2026-09-21 12:22:33",
+    "type": "ExceptionWhileProcessing",
+    "exception_code": 159,
+    "query_duration_ms": 40001,
+    "read_rows": 6413016,
+    "read_bytes": 3451046285,
+    "memory_usage": 408578646,
+    "result_rows": 0,
+    "boundSqlSha256": "D5FA6B30133C481A19D42304C551C4AE77359E3E572BEC3D4B576B5E0B715637",
+    "sortSpills": 3,
+    "aggregationSpills": 1220,
+    "querySettings": {
+      "max_block_size": "4096",
+      "max_rows_to_read": "12000000",
+      "max_bytes_to_read": "8589934592",
+      "max_rows_to_group_by": "500000",
+      "max_bytes_before_external_group_by": "268435456",
+      "max_bytes_before_external_sort": "33554432",
+      "max_bytes_ratio_before_external_sort": "0.1",
+      "max_result_rows": "4097",
+      "max_result_bytes": "4194304",
+      "max_execution_time": "40",
+      "max_memory_usage": "536870912",
+      "max_temporary_data_on_disk_size_for_query": "2147483648",
+      "short_circuit_function_evaluation": "force_enable"
+    }
+  },
+  "success": {
+    "event_time": "2026-09-21 12:39:21",
+    "type": "QueryFinish",
+    "exception_code": 0,
+    "query_duration_ms": 19805,
+    "read_rows": 9524736,
+    "read_bytes": 3989581656,
+    "memory_usage": 328760604,
+    "result_rows": 356,
+    "boundSqlSha256": "D5FA6B30133C481A19D42304C551C4AE77359E3E572BEC3D4B576B5E0B715637",
+    "sortSpills": 48,
+    "aggregationSpills": 0,
+    "querySettings": {
+      "max_block_size": "4096",
+      "max_rows_to_read": "12000000",
+      "max_bytes_to_read": "8589934592",
+      "max_rows_to_group_by": "500000",
+      "max_bytes_before_external_sort": "33554432",
+      "max_bytes_ratio_before_external_sort": "0",
+      "max_result_rows": "4097",
+      "max_result_bytes": "4194304",
+      "max_execution_time": "40",
+      "readonly": "1",
+      "max_memory_usage": "536870912",
+      "max_temporary_data_on_disk_size_for_query": "2147483648",
+      "short_circuit_function_evaluation": "force_enable"
+    },
+    "effectiveSettings": {
+      "max_block_size": "4096",
+      "max_rows_to_read": "12000000",
+      "max_bytes_to_read": "8589934592",
+      "max_rows_to_group_by": "500000",
+      "max_bytes_before_external_sort": "33554432",
+      "max_bytes_ratio_before_external_sort": "0",
+      "max_result_rows": "4097",
+      "max_result_bytes": "4194304",
+      "max_execution_time": "40",
+      "readonly": "1",
+      "max_memory_usage": "536870912",
+      "max_temporary_data_on_disk_size_for_query": "2147483648",
+      "short_circuit_function_evaluation": "force_enable",
+      "max_bytes_before_external_group_by": "0"
+    },
+    "wallSeconds": 20.184,
+    "aggregateResult": {
+      "itemGroups": 342,
+      "trendGroups": 14,
+      "itemNullMeanCount": 0,
+      "itemNullBytesCount": 0,
+      "totalAndMeanAvailable": true
+    }
+  },
+  "limitsUnchanged": {
+    "memoryBytes": 536870912,
+    "readRows": 12000000,
+    "readBytes": 8589934592,
+    "groupCount": 500000,
+    "temporaryDiskBytes": 2147483648,
+    "executionSeconds": 40,
+    "httpTimeoutSeconds": 45,
+    "applicationAdmissionSeconds": 50,
+    "applicationAdmissionCapacityPerInstance": 2
+  },
+  "verificationStatus": "Deployed backend r4 API passed authenticated read-only verification: 24h and 7d returned HTTP 200, valid interval totals and means, 24 hourly / 7 daily buckets.",
+  "intermediateControl": {
+    "description": "Same HTTP SQL, aggregation spill disabled only; succeeded before fixing the host-dependent sort-ratio gate.",
+    "query_duration_ms": 21027,
+    "memory_usage": 417290654,
+    "aggregationSpills": 0
+  },
+  "sortRatioRootCause": {
+    "explanation": "ClickHouse 26.3 spills only when both fixed and ratio thresholds are satisfied. The ratio is computed from user/server available memory, skipping the query tracker, so large-memory hosts can exceed the 512 MiB query limit before sorting spills. Setting ratio 0 makes the retained 32 MiB fixed threshold effective.",
+    "sources": [
+      "https://github.com/ClickHouse/ClickHouse/blob/v26.3.32.14-lts/src/Processors/Transforms/MergeSortingTransform.cpp#L218",
+      "https://github.com/ClickHouse/ClickHouse/blob/v26.3.32.14-lts/src/Common/MemoryTrackerUtils.cpp#L6"
+    ]
+  },
+  "localRegression": {
+    "tests": 23,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "/tmp/noeriva-refinements/application-r4-final-test.log",
+    "fixture": {
+      "rows": 3200000,
+      "streams": 512,
+      "applications": 256,
+      "interfaces": 2,
+      "epochCharacters": 64,
+      "qualityFlags": [
+        "NBAR_ROW_LIMIT",
+        "NBAR_COUNTER_UNAVAILABLE"
+      ],
+      "legacyAndExactBytes": true,
+      "memoryBudgetBytes": 536870912,
+      "aggregationSpillsAsserted": 0
+    }
+  },
+  "apiVerification": {
+    "checkedAt": "2026-09-21T12:46:22Z",
+    "24h": {
+      "http": 200,
+      "ok": true,
+      "elapsedSeconds": 4.234
+    },
+    "7d": {
+      "http": 200,
+      "ok": true,
+      "elapsedSeconds": 20.839
+    }
+  }
+}
