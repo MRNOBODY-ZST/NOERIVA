@@ -55,6 +55,65 @@ import static org.assertj.core.api.Assertions.*;
             .satisfies(error->assertThat(((org.springframework.web.reactive.function.client.WebClientResponseException)error).getResponseBodyAsString()).containsAnyOf("TOO_MANY_ROWS","TOO_MANY_BYTES"));
     }
     Observation interval(String id,int index,Instant at,String delta,double seconds){return new Observation(ApplicationRates.hash(id),"router",index,"eth"+index,42,"tls","IN",at,"18446744073709551000",null,null,Double.parseDouble(delta)*8/seconds,null,seconds,"epoch",List.of(),delta);}
+    @Test void sevenDayWindowAggregatesMillionsOfPayloadsWithinItsMemoryBudget(){
+        Instant from=now.minusSeconds(7*86400);
+        var sample=interval("large-history",8,now,"200",20);
+        String payload=json.writeValueAsString(sample).replace("\\","\\\\").replace("'","\\'");
+        // 128 streams × 25,000 non-overlapping 20-second intervals. Raw JSON
+        // exceeds the query's 512 MiB ceiling, but its typed projection can spill.
+        String insert="INSERT INTO noeriva.application_observations SELECT '"+org+"','router',lower(hex(SHA256(toString(number)))),fromUnixTimestamp64Milli("+from.toEpochMilli()+"+(intDiv(number,128)+1)*20000),toUInt32(number%128+1),'IN','tls','"+payload+"',1 FROM numbers(3200000)";
+        client.post().bodyValue(insert).retrieve().toBodilessEntity().block(Duration.ofSeconds(60));
+        WindowSummary result;
+        try {result=history.window(org,"router",null,"","",from,now,12,180).block(Duration.ofSeconds(35));}
+        catch (ApiException failure) {
+            client.post().bodyValue("SYSTEM FLUSH LOGS").retrieve().toBodilessEntity().block(WAIT);
+            String reason=client.post().bodyValue("SELECT exception_code,exception FROM system.query_log WHERE startsWith(query_id,'noeriva-app-window-') AND type='ExceptionWhileProcessing' ORDER BY event_time_microseconds DESC LIMIT 1 FORMAT JSONEachRow").retrieve().bodyToMono(String.class).block(WAIT);
+            throw new AssertionError("The bounded complete window must succeed: "+reason,failure);
+        }
+        assertThat(result.sampleRows()).isEqualTo(3200000);
+        assertThat(result.totalBytes()).isEqualTo("640000000");
+        assertThat(result.meanBps()).isEqualTo(10240d);
+        assertThat(result.coverage()).isCloseTo(500000d/604800,within(.000001));
+        assertThat(result.trend()).hasSize(7);
+        assertThat(result.trend().getFirst().inBytes()).isEqualTo("110592000");
+        assertThat(result.trend().getLast().inBytes()).isNull();
+        client.post().bodyValue("SYSTEM FLUSH LOGS").retrieve().toBodilessEntity().block(WAIT);
+        String memory=client.post().bodyValue("SELECT max(memory_usage) FROM system.query_log WHERE type='QueryFinish' AND startsWith(query_id,'noeriva-app-window-') AND read_rows>=3200000 FORMAT TSV").retrieve().bodyToMono(String.class).block(WAIT);
+        assertThat(Long.parseLong(memory.trim())).as("The successful full window must retain its 512 MiB hard ceiling").isBetween(1L,536870912L);
+    }
+    void appendPayload(String label,int index,Map<String,Object> payload){
+        String body=json.writeValueAsString(Map.of("organization_id",org,"device_id","router","observation_id",ApplicationRates.hash(label),"observed_at",now.toString(),"interface_index",index,"direction","IN","application","tls","payload",json.writeValueAsString(payload),"revision",1));
+        client.post().uri("/?date_time_input_format=best_effort").bodyValue("INSERT INTO noeriva.application_observations FORMAT JSONEachRow\n"+body).retrieve().toBodilessEntity().block(WAIT);
+    }
+    @Test void typedWindowPreservesAbsentNullZeroAndFractionalLegacyRates(){
+        var base=new HashMap<String,Object>();base.put("protocolIndex",42);base.put("intervalSeconds",60);base.put("qualityFlags",List.of());
+        appendPayload("absent",1,base);
+        var nullRate=new HashMap<>(base);nullRate.put("derivedBps",null);appendPayload("null",2,nullRate);
+        var zero=new HashMap<>(base);zero.put("derivedBps",0);appendPayload("zero",3,zero);
+        var fractional=new HashMap<>(base);fractional.put("derivedBps",80.5);fractional.put("intervalBytes",null);appendPayload("fractional",4,fractional);
+        var numericText=new HashMap<>(base);numericText.put("derivedBps","80.5");numericText.put("intervalSeconds","60");appendPayload("text",5,numericText);
+        var booleanRate=new HashMap<>(base);booleanRate.put("derivedBps",true);appendPayload("boolean",6,booleanRate);
+        var objectRate=new HashMap<>(base);objectRate.put("derivedBps",Map.of("value",80));appendPayload("object",7,objectRate);
+        var booleanDuration=new HashMap<>(base);booleanDuration.put("intervalSeconds",true);booleanDuration.put("derivedBps",80);appendPayload("boolean-duration",8,booleanDuration);
+        for(int index:List.of(1,2))assertThat(history.window(org,"router",index,"IN","",now.minusSeconds(60),now,12,180).block(WAIT).totalBytes()).isNull();
+        assertThat(history.window(org,"router",3,"IN","",now.minusSeconds(60),now,12,180).block(WAIT).totalBytes()).isEqualTo("0");
+        var legacy=history.window(org,"router",4,"IN","",now.minusSeconds(60),now,12,180).block(WAIT);
+        assertThat(legacy.totalBytes()).isEqualTo("604");assertThat(legacy.meanBps()).isEqualTo(80.5);
+        assertThat(legacy.qualityFlags()).contains("HISTORICAL_RATE_ESTIMATE");
+        assertThat(history.window(org,"router",5,"IN","",now.minusSeconds(60),now,12,180).block(WAIT).totalBytes()).isEqualTo("604");
+        for(int index:List.of(6,7,8))assertThat(history.window(org,"router",index,"IN","",now.minusSeconds(60),now,12,180).block(WAIT).totalBytes()).isNull();
+    }
+    @Test void invalidHugeLegacyRatesStayMissingAndCannotOverflowDecimalConversion(){
+        appendPayload("overflow",8,Map.of("protocolIndex",42,"intervalSeconds",10800,"derivedBps",1e100,"qualityFlags",List.of()));
+        var result=history.window(org,"router",8,"IN","",now.minusSeconds(10800),now,12,180).block(WAIT);
+        assertThat(result.totalBytes()).isNull();assertThat(result.meanBps()).isNull();assertThat(result.coverage()).isZero();
+    }
+    @Test void maximumUnsignedDeltaSurvivesClippingNearTheThreeHourIntervalLimit(){
+        history.append(org,List.of(interval("max-clipped",8,now,"18446744073709551610",10800))).block(WAIT);
+        var result=history.window(org,"router",8,"IN","",now.minusSeconds(10800).plusMillis(1),now,12,180).block(WAIT);
+        assertThat(result.totalBytes()).isEqualTo("18446742365677692933");
+        assertThat(result.qualityFlags()).contains("ESTIMATED_BOUNDARY");
+    }
     @Test void windowClipsDeltasAndSumsInterfaceMeansWithoutDividingByInterfaceCount(){
         Instant from=now.minusSeconds(120),to=now.minusSeconds(30);
         history.append(org,List.of(interval("one",8,now.minusSeconds(60),"600",60),interval("two",8,now,"1200",60),interval("three",9,now,"2400",120))).block(WAIT);

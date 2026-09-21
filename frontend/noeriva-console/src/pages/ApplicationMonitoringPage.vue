@@ -74,6 +74,7 @@ const overview = useApiQuery<ApplicationSummary>(
     !!deviceId.value &&
     !!summaryWindow.value &&
     (!interfaceIndex.value || /^[1-9]\d*$/.test(interfaceIndex.value)),
+  { refetchInterval: false, staleTime: 60_000 },
 );
 watch(
   () => sources.data.value?.items,

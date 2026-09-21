@@ -9,17 +9,25 @@ import static io.noeriva.control.applications.ApplicationModels.*;
 final class ApplicationWindow {
     private ApplicationWindow(){}
     static int resolution(Instant from,Instant to){long seconds=Duration.between(from,to).getSeconds();return seconds<=3600?60:seconds<=21600?300:seconds<=86400?3600:86400;}
+    // Nullable rate distinguishes absent/null from true zero. JSONType rejects
+    // booleans, which ClickHouse otherwise coerces to numeric 1/0. Absent/null exact
+    // bytes remain the legacy rate estimate. The typed tuple follows the unique
+    // observation id in the sort key, preserving order while forcing CH to drop
+    // raw JSON before its window sort. Decimal128 holds a UInt64 delta times at
+    // most 10,800,000 ms at scale 9; legacy estimates are bounded before casting.
     static String sql(Integer index,String direction,String q){return """
         WITH raw AS (
-          SELECT application,direction,interface_index,JSONExtractInt(payload,'protocolIndex') protocol_index,
+          SELECT application,direction,interface_index,
+            JSONExtract(payload,'Tuple(protocolIndex Int64, intervalSeconds Float64, derivedBps Nullable(Float64), intervalBytes String, qualityFlags Array(String))') raw_fields,
+            CAST(tuple(raw_fields.protocolIndex,if(JSONType(payload,'intervalSeconds')='Bool',0,raw_fields.intervalSeconds),
+              if(JSONType(payload,'derivedBps')='Bool',NULL,raw_fields.derivedBps),raw_fields.intervalBytes,raw_fields.qualityFlags),
+              'Tuple(protocolIndex Int64, intervalSeconds Float64, derivedBps Nullable(Float64), intervalBytes String, qualityFlags Array(String))') fields,
+            fields.protocolIndex protocol_index,
             toUnixTimestamp64Milli(observed_at) observed_ms,
-            JSONExtractFloat(payload,'intervalSeconds') seconds,
-            JSONExtractFloat(payload,'derivedBps') rate,
-            JSONHas(payload,'derivedBps') AND JSONExtractRaw(payload,'derivedBps')!='null' has_rate,
-            JSONExtractString(payload,'intervalBytes') exact_bytes,
-            JSONExtract(payload,'qualityFlags','Array(String)') quality,
+            fields.intervalSeconds seconds,ifNull(fields.derivedBps,0) rate,isNotNull(fields.derivedBps) has_rate,
+            fields.intervalBytes exact_bytes,fields.qualityFlags quality,
             lagInFrame(toUnixTimestamp64Milli(observed_at),1,0) OVER
-              (PARTITION BY interface_index,application,direction,JSONExtractInt(payload,'protocolIndex') ORDER BY observed_at,observation_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) previous_ms
+              (PARTITION BY interface_index,application,direction,fields.protocolIndex ORDER BY observed_at,observation_id,fields ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) previous_ms
           FROM noeriva.application_observations FINAL
           WHERE organization_id={org:String} AND device_id={device:String}
             AND observed_at>fromUnixTimestamp64Milli({from:Int64})
@@ -27,9 +35,11 @@ final class ApplicationWindow {
         """+(index==null?"":" AND interface_index={index:UInt32}")+(direction.isEmpty()?"":" AND direction={direction:String}")+(q.isEmpty()?"":" AND positionCaseInsensitiveUTF8(application,{q:String})>0")+"""
         ), intervals AS (
           SELECT *,observed_ms-toInt64(round(if(isFinite(seconds) AND seconds>0 AND seconds<=10800,seconds,0)*1000)) begin_ms,
+            isFinite(rate*seconds) AND rate>=0 AND seconds>0 AND seconds<=10800 AND rate*seconds/8<=18446744073709551616.0 legacy_valid,
+            toDecimal128OrNull(if(match(exact_bytes,'^[0-9]{1,20}$'),exact_bytes,''),9) bounded_exact,
             has_rate AND isFinite(rate) AND isFinite(rate*seconds) AND rate>=0 AND seconds>0 AND seconds<=10800
-              AND begin_ms>=previous_ms AND (exact_bytes='' OR (match(exact_bytes,'^[0-9]{1,20}$') AND ifNull(toDecimal256OrNull(exact_bytes,9)<=toDecimal256('18446744073709551615',9),false))) valid,
-            if(exact_bytes='',toDecimal256(if(isFinite(rate*seconds),rate*seconds/8,0),9),ifNull(toDecimal256OrNull(exact_bytes,9),toDecimal256(0,9))) delta,
+              AND begin_ms>=previous_ms AND (if(exact_bytes='',legacy_valid,ifNull(bounded_exact<=toDecimal128('18446744073709551615',9),false))) valid,
+            if(exact_bytes='',toDecimal128(if(legacy_valid,rate*seconds/8,0),9),ifNull(bounded_exact,toDecimal128(0,9))) delta,
             greatest(begin_ms,{from:Int64}) clipped_begin,least(observed_ms,{to:Int64}) clipped_end
           FROM raw
         ), expanded AS (
@@ -42,7 +52,7 @@ final class ApplicationWindow {
           SELECT *,if(bucket=-1,{from:Int64},{from:Int64}+bucket*{step:Int64}) bucket_begin,
             if(bucket=-1,{to:Int64},least({to:Int64},bucket_begin+{step:Int64})) bucket_end,
             if(valid,greatest(0,least(clipped_end,bucket_end)-greatest(clipped_begin,bucket_begin)),0) millis,
-            if(millis>0,delta*toDecimal256(millis,0)/toDecimal256(greatest(1,observed_ms-begin_ms),0),toDecimal256(0,9)) piece_bytes,
+            if(millis>0,if(millis=observed_ms-begin_ms,delta,delta*toDecimal128(millis,0)/toDecimal128(greatest(1,observed_ms-begin_ms),0)),toDecimal128(0,9)) piece_bytes,
             arrayConcat(quality,if(valid AND exact_bytes='',['HISTORICAL_RATE_ESTIMATE'],[]),
               if(millis>0 AND (greatest(clipped_begin,bucket_begin)!=begin_ms OR least(clipped_end,bucket_end)!=observed_ms),['ESTIMATED_BOUNDARY'],[]),
               if(begin_ms<previous_ms AND has_rate,['OVERLAPPING_INTERVAL_EXCLUDED'],[])) piece_flags
@@ -52,7 +62,7 @@ final class ApplicationWindow {
             sum(piece_bytes) byte_sum,sum(millis)/1000.0 duration,
             min((bucket_end-bucket_begin)/1000.0) expected,
             count() samples,maxIf(observed_ms,millis>0) observed,
-            arrayDistinct(arrayFlatten(groupArray(piece_flags))) flags
+            groupUniqArrayArray(piece_flags) flags
           FROM pieces GROUP BY bucket,application,direction,interface_index,protocol_index
         )
         SELECT if(bucket=-1,'item','trend') kind,bucket,if(bucket=-1,application,'') app,direction,
@@ -61,7 +71,7 @@ final class ApplicationWindow {
           if(countIf(duration<=0)>0,NULL,sum(toFloat64(byte_sum)*8/nullIf(duration,0))) meanBps,
           least(1.0,min(duration/expected)) coverage,sum(samples) samples,
           nullIf(max(observed),0) observedMillis,
-          arrayDistinct(arrayFlatten(groupArray(flags))) flags
+          groupUniqArrayArray(flags) flags
         FROM streams GROUP BY bucket,app,direction
         ORDER BY bucket,app,direction LIMIT 4097 FORMAT JSONEachRow
         """;}

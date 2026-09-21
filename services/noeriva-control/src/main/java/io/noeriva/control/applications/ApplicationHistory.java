@@ -49,15 +49,19 @@ import static io.noeriva.control.applications.ApplicationModels.*;
         if(!start.isBefore(end)||Duration.between(start,end).compareTo(Duration.ofDays(7))>0||end.isAfter(now.plusSeconds(5)))
             throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_APPLICATION_RANGE","Select a non-future time range of at most seven days");
         int resolution=ApplicationWindow.resolution(start,end);long scanTo=Math.min(now.toEpochMilli(),end.plusSeconds(10800).toEpochMilli());
+        boolean longWindow=Duration.between(start,end).compareTo(Duration.ofDays(1))>0;
+        // Seven days scan millions of observations. Keep the same hard memory,
+        // read, group and result ceilings, with an explicit longer time budget.
         return Mono.usingWhen(Mono.fromSupplier(()->"noeriva-app-window-"+UUID.randomUUID()),id->client.post().uri(b->{
             b.path("/").queryParam("query_id",id).queryParam("param_org",org).queryParam("param_device",device)
                 .queryParam("param_from",start.toEpochMilli()).queryParam("param_to",end.toEpochMilli()).queryParam("param_scanTo",scanTo).queryParam("param_step",resolution*1000L)
-                .queryParam("max_execution_time",8).queryParam("max_rows_to_read",12000000).queryParam("max_bytes_to_read",8589934592L)
-                .queryParam("max_memory_usage",536870912).queryParam("max_bytes_before_external_sort",134217728).queryParam("max_bytes_before_external_group_by",134217728).queryParam("max_temporary_data_on_disk_size_for_query",2147483648L).queryParam("max_result_rows",4097).queryParam("max_result_bytes",4194304)
+                .queryParam("max_execution_time",longWindow?40:8).queryParam("max_rows_to_read",12000000).queryParam("max_bytes_to_read",8589934592L)
+                .queryParam("max_memory_usage",536870912).queryParam("max_bytes_before_external_sort",33554432).queryParam("max_bytes_ratio_before_external_sort",0.1).queryParam("max_bytes_before_external_group_by",268435456).queryParam("max_temporary_data_on_disk_size_for_query",2147483648L).queryParam("max_result_rows",4097).queryParam("max_result_bytes",4194304)
+                .queryParam("max_block_size",4096).queryParam("short_circuit_function_evaluation","force_enable")
                 .queryParam("max_rows_to_group_by",500000).queryParam("group_by_overflow_mode","throw").queryParam("max_threads",2)
                 .queryParam("result_overflow_mode","throw").queryParam("read_overflow_mode","throw").queryParam("timeout_overflow_mode","throw").queryParam("wait_end_of_query",1);
             if(index!=null)b.queryParam("param_index",index);if(!direction.isEmpty())b.queryParam("param_direction",direction);if(!q.isEmpty())b.queryParam("param_q",q);return b.build();})
-            .contentType(MediaType.TEXT_PLAIN).bodyValue(ApplicationWindow.sql(index,direction,q)).retrieve().bodyToMono(String.class).defaultIfEmpty("").timeout(Duration.ofSeconds(10))
+            .contentType(MediaType.TEXT_PLAIN).bodyValue(ApplicationWindow.sql(index,direction,q)).retrieve().bodyToMono(String.class).defaultIfEmpty("").timeout(Duration.ofSeconds(longWindow?45:10))
             .map(body->ApplicationWindow.assemble(device,start,end,resolution,limit,body.lines().filter(line->!line.isBlank()).map(line->json.readValue(line,ApplicationWindow.Row.class)).toList(),now,freshnessSeconds)),
             id->Mono.empty(),(id,error)->kill(id),this::kill).onErrorMap(e->e instanceof ApiException?e:unavailable());
     }
