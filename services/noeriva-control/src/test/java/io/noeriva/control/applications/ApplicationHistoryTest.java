@@ -57,29 +57,36 @@ import static org.assertj.core.api.Assertions.*;
     Observation interval(String id,int index,Instant at,String delta,double seconds){return new Observation(ApplicationRates.hash(id),"router",index,"eth"+index,42,"tls","IN",at,"18446744073709551000",null,null,Double.parseDouble(delta)*8/seconds,null,seconds,"epoch",List.of(),delta);}
     @Test void sevenDayWindowAggregatesMillionsOfPayloadsWithinItsMemoryBudget(){
         Instant from=now.minusSeconds(7*86400);
-        var sample=interval("large-history",8,now,"200",20);
+        var sample=new Observation(ApplicationRates.hash("large-history"),"router",8,"TenGigabitEthernet0/1/0",42,"__APPLICATION__","IN",now,"18446744073709551000",null,123000d,80d,null,80d,ApplicationRates.hash("synthetic-epoch"),List.of("NBAR_ROW_LIMIT","NBAR_COUNTER_UNAVAILABLE"),"800");
         String payload=json.writeValueAsString(sample).replace("\\","\\\\").replace("'","\\'");
-        // 128 streams × 25,000 non-overlapping 20-second intervals. Raw JSON
-        // exceeds the query's 512 MiB ceiling, but its typed projection can spill.
-        String insert="INSERT INTO noeriva.application_observations SELECT '"+org+"','router',lower(hex(SHA256(toString(number)))),fromUnixTimestamp64Milli("+from.toEpochMilli()+"+(intDiv(number,128)+1)*20000),toUInt32(number%128+1),'IN','tls','"+payload+"',1 FROM numbers(3200000)";
+        String legacyPayload=payload.replace("\"intervalBytes\":\"800\"","\"intervalBytes\":null");
+        // 256 applications × 2 interfaces × 6,250 non-overlapping 80s intervals.
+        // Wide payloads, repeated flags and both legacy/exact counters exercise
+        // the final guards and query-wide sort memory during small-group aggregation.
+        String application="concat('application-',toString(intDiv(number%512,2)))";
+        String insert="INSERT INTO noeriva.application_observations SELECT '"+org+"','router',lower(hex(SHA256(toString(number)))),fromUnixTimestamp64Milli("+from.toEpochMilli()+"+(intDiv(number,512)+1)*80000),toUInt32(number%2+1),'IN',"+application+",replaceAll(if(intDiv(number,512)<3125,'"+legacyPayload+"','"+payload+"'),'__APPLICATION__',"+application+"),1 FROM numbers(3200000)";
         client.post().bodyValue(insert).retrieve().toBodilessEntity().block(Duration.ofSeconds(60));
         WindowSummary result;
-        try {result=history.window(org,"router",null,"","",from,now,12,180).block(Duration.ofSeconds(35));}
+        try {result=history.window(org,"router",null,"","",from,now,12,180).block(Duration.ofSeconds(50));}
         catch (ApiException failure) {
             client.post().bodyValue("SYSTEM FLUSH LOGS").retrieve().toBodilessEntity().block(WAIT);
             String reason=client.post().bodyValue("SELECT exception_code,exception FROM system.query_log WHERE startsWith(query_id,'noeriva-app-window-') AND type='ExceptionWhileProcessing' ORDER BY event_time_microseconds DESC LIMIT 1 FORMAT JSONEachRow").retrieve().bodyToMono(String.class).block(WAIT);
             throw new AssertionError("The bounded complete window must succeed: "+reason,failure);
         }
         assertThat(result.sampleRows()).isEqualTo(3200000);
-        assertThat(result.totalBytes()).isEqualTo("640000000");
-        assertThat(result.meanBps()).isEqualTo(10240d);
+        assertThat(result.totalBytes()).isEqualTo("2560000000");
+        assertThat(result.meanBps()).isEqualTo(40960d);
+        assertThat(result.totalApplications()).isEqualTo(256);
+        assertThat(result.qualityFlags()).contains("HISTORICAL_RATE_ESTIMATE","NBAR_ROW_LIMIT");
         assertThat(result.coverage()).isCloseTo(500000d/604800,within(.000001));
         assertThat(result.trend()).hasSize(7);
-        assertThat(result.trend().getFirst().inBytes()).isEqualTo("110592000");
+        assertThat(result.trend().getFirst().inBytes()).isEqualTo("442368000");
         assertThat(result.trend().getLast().inBytes()).isNull();
         client.post().bodyValue("SYSTEM FLUSH LOGS").retrieve().toBodilessEntity().block(WAIT);
         String memory=client.post().bodyValue("SELECT max(memory_usage) FROM system.query_log WHERE type='QueryFinish' AND startsWith(query_id,'noeriva-app-window-') AND read_rows>=3200000 FORMAT TSV").retrieve().bodyToMono(String.class).block(WAIT);
         assertThat(Long.parseLong(memory.trim())).as("The successful full window must retain its 512 MiB hard ceiling").isBetween(1L,536870912L);
+        String spills=client.post().bodyValue("SELECT max(ProfileEvents['ExternalAggregationWritePart']) FROM system.query_log WHERE type='QueryFinish' AND startsWith(query_id,'noeriva-app-window-') AND read_rows>=3200000 FORMAT TSV").retrieve().bodyToMono(String.class).block(WAIT);
+        assertThat(Long.parseLong(spills.trim())).as("Small aggregate states must not repeatedly spill because the preceding sort retains memory").isZero();
     }
     void appendPayload(String label,int index,Map<String,Object> payload){
         String body=json.writeValueAsString(Map.of("organization_id",org,"device_id","router","observation_id",ApplicationRates.hash(label),"observed_at",now.toString(),"interface_index",index,"direction","IN","application","tls","payload",json.writeValueAsString(payload),"revision",1));

@@ -52,11 +52,15 @@ import static io.noeriva.control.applications.ApplicationModels.*;
         boolean longWindow=Duration.between(start,end).compareTo(Duration.ofDays(1))>0;
         // Seven days scan millions of observations. Keep the same hard memory,
         // read, group and result ceilings, with an explicit longer time budget.
+        // CH 26.3's sort ratio is an additional host-memory gate: disable it so
+        // the fixed 32 MiB spill threshold works beneath the 512 MiB query cap.
+        // Small aggregate states stay in memory; a query-wide spill threshold
+        // otherwise repeatedly spills them while the upstream sort holds memory.
         return Mono.usingWhen(Mono.fromSupplier(()->"noeriva-app-window-"+UUID.randomUUID()),id->client.post().uri(b->{
             b.path("/").queryParam("query_id",id).queryParam("param_org",org).queryParam("param_device",device)
                 .queryParam("param_from",start.toEpochMilli()).queryParam("param_to",end.toEpochMilli()).queryParam("param_scanTo",scanTo).queryParam("param_step",resolution*1000L)
                 .queryParam("max_execution_time",longWindow?40:8).queryParam("max_rows_to_read",12000000).queryParam("max_bytes_to_read",8589934592L)
-                .queryParam("max_memory_usage",536870912).queryParam("max_bytes_before_external_sort",33554432).queryParam("max_bytes_ratio_before_external_sort",0.1).queryParam("max_bytes_before_external_group_by",268435456).queryParam("max_temporary_data_on_disk_size_for_query",2147483648L).queryParam("max_result_rows",4097).queryParam("max_result_bytes",4194304)
+                .queryParam("max_memory_usage",536870912).queryParam("max_bytes_before_external_sort",33554432).queryParam("max_bytes_ratio_before_external_sort",0).queryParam("max_bytes_before_external_group_by",0).queryParam("max_temporary_data_on_disk_size_for_query",2147483648L).queryParam("max_result_rows",4097).queryParam("max_result_bytes",4194304)
                 .queryParam("max_block_size",4096).queryParam("short_circuit_function_evaluation","force_enable")
                 .queryParam("max_rows_to_group_by",500000).queryParam("group_by_overflow_mode","throw").queryParam("max_threads",2)
                 .queryParam("result_overflow_mode","throw").queryParam("read_overflow_mode","throw").queryParam("timeout_overflow_mode","throw").queryParam("wait_end_of_query",1);

@@ -2,7 +2,7 @@
 fullnameOverride: noeriva
 control:
   topologySpreadWhenUnsatisfiable: DoNotSchedule
-  image: {repository: noeriva/control, tag: 20260921-refinements-r3, pullPolicy: IfNotPresent}
+  image: {repository: noeriva/control, tag: 20260921-refinements-r4, pullPolicy: IfNotPresent}
   replicas: 2
   autoscaling: {enabled: true, minReplicas: 2, maxReplicas: 2, targetCPUUtilizationPercentage: 65}
 worker:
