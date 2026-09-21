@@ -1,16 +1,69 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { EChartsCoreOption } from "echarts/core";
 import type { HeatCell, Heatmap } from "../services/types";
 import { formatRate, stateLabel, formatTime } from "../utils/format";
 import { usePreferencesStore } from "../stores/preferences";
-import ChartCanvas from "./ChartCanvas.vue";
 const props = defineProps<{ data: Heatmap }>();
 const prefs = usePreferencesStore();
 const selected = ref<HeatCell | null>(null);
-const dates = computed(() =>
-  [...new Set(props.data.cells.map((cell) => cell.date))].sort().reverse(),
+const days = computed(() =>
+  [...new Set(props.data.cells.map((cell) => cell.date))]
+    .sort()
+    .map((date) => ({
+      date,
+      cells: props.data.cells
+        .filter((cell) => cell.date === date)
+        .sort((a, b) => a.hour - b.hour),
+    })),
 );
+const valid = (cell: HeatCell) =>
+  cell.value !== null &&
+  Number.isFinite(cell.value) &&
+  !["MISSING", "FUTURE", "DST_MISSING"].includes(cell.state);
+const maximum = computed(() =>
+  Math.max(1, ...props.data.cells.filter(valid).map((cell) => cell.value!)),
+);
+const palette = [
+  [33, 102, 172],
+  [146, 197, 222],
+  [247, 247, 247],
+  [244, 165, 130],
+  [178, 24, 43],
+];
+function cellStyle(cell: HeatCell) {
+  let rgb: number[];
+  if (!valid(cell))
+    rgb =
+      cell.state === "FUTURE"
+        ? prefs.dark
+          ? [23, 35, 49]
+          : [255, 255, 255]
+        : prefs.dark
+          ? [55, 69, 83]
+          : [228, 232, 237];
+  else {
+    const scale = Math.max(0, Math.min(1, cell.value! / maximum.value)) * 4;
+    const index = Math.min(3, Math.floor(scale)),
+      fraction = scale - index;
+    rgb = palette[index]!.map((v, i) =>
+      Math.round(v + (palette[index + 1]![i]! - v) * fraction),
+    );
+  }
+  const light = rgb[0]! * 0.299 + rgb[1]! * 0.587 + rgb[2]! * 0.114 > 150;
+  return {
+    backgroundColor: `rgb(${rgb.join(", ")})`,
+    color: light ? "#25354a" : "#ffffff",
+  };
+}
+function cellLabel(cell: HeatCell) {
+  return `${cell.date} ${String(cell.hour).padStart(2, "0")}:00–${String(cell.hour + 1).padStart(2, "0")}:00 · ${stateLabel(cell.state)} · ${formatRate(cell.value)} · 覆盖 ${(cell.coverage * 100).toFixed(0)}%`;
+}
+function weekday(date: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
 watch(
   () => props.data,
   (data) => {
@@ -23,147 +76,59 @@ watch(
         ) || null;
   },
 );
-const option = computed<EChartsCoreOption>(() => {
-  const valid = props.data.cells.filter(
-    (cell) =>
-      cell.value !== null &&
-      !["MISSING", "FUTURE", "DST_MISSING"].includes(cell.state),
-  );
-  const missing = props.data.cells.filter(
-    (cell) =>
-      cell.value === null ||
-      ["MISSING", "FUTURE", "DST_MISSING"].includes(cell.state),
-  );
-  const cellPoint = (cell: HeatCell) => ({
-    value: [dates.value.indexOf(cell.date), cell.hour, cell.value ?? 0],
-    cell,
-    itemStyle:
-      cell.state === "PARTIAL"
-        ? { borderColor: "#b58031", borderWidth: 2 }
-        : undefined,
-  });
-  return {
-    animation: false,
-    grid: { left: 54, right: 16, top: 16, bottom: 54 },
-    tooltip: {
-      position: "top",
-      renderMode: "richText",
-      formatter: (payload: unknown) => {
-        const cell = (payload as { data: { cell: HeatCell } }).data.cell;
-        return `${cell.date}  ${String(cell.hour).padStart(2, "0")}:00–${String(cell.hour + 1).padStart(2, "0")}:00\n${stateLabel(cell.state)} · ${formatRate(cell.value)}\n覆盖率 ${(cell.coverage * 100).toFixed(0)}%`;
-      },
-    },
-    xAxis: {
-      type: "category",
-      data: dates.value.map((date) => date.slice(5)),
-      position: "bottom",
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: {
-        color: prefs.dark ? "#b0bfd0" : "#536579",
-        fontSize: 11,
-        interval: 0,
-      },
-    },
-    yAxis: {
-      type: "category",
-      data: Array.from(
-        { length: 24 },
-        (_, hour) => `${String(hour).padStart(2, "0")}:00`,
-      ),
-      inverse: true,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: {
-        color: prefs.dark ? "#b0bfd0" : "#536579",
-        fontSize: 10,
-        interval: 3,
-      },
-    },
-    visualMap: [
-      {
-        min: 0,
-        max: Math.max(...valid.map((cell) => cell.value || 0), 1),
-        seriesIndex: 0,
-        dimension: 2,
-        calculable: false,
-        orient: "horizontal",
-        left: "center",
-        bottom: 0,
-        itemWidth: 10,
-        itemHeight: 150,
-        text: ["高", "低"],
-        textStyle: { color: prefs.dark ? "#b0bfd0" : "#536579" },
-        inRange: {
-          color: prefs.dark
-            ? ["#213c54", "#3375aa", "#80b9e8"]
-            : ["#edf3fb", "#c3d9f1", "#6b9bce", "#255ea8"],
-        },
-      },
-      {
-        type: "piecewise",
-        show: false,
-        seriesIndex: 1,
-        dimension: 2,
-        pieces: [
-          { value: 0, color: prefs.dark ? "#374553" : "#e4e8ed" },
-          { value: 1, color: prefs.dark ? "#172331" : "#ffffff" },
-        ],
-      },
-    ],
-    series: [
-      {
-        type: "heatmap",
-        data: valid.map(cellPoint),
-        itemStyle: {
-          borderColor: prefs.dark ? "#172331" : "#fff",
-          borderWidth: 2,
-        },
-        emphasis: { itemStyle: { borderColor: "#172538", borderWidth: 2 } },
-      },
-      {
-        type: "heatmap",
-        data: missing.map((cell) => ({
-          ...cellPoint(cell),
-          value: [
-            dates.value.indexOf(cell.date),
-            cell.hour,
-            cell.state === "FUTURE" ? 1 : 0,
-          ],
-          itemStyle: {
-            color:
-              cell.state === "FUTURE"
-                ? prefs.dark
-                  ? "#172331"
-                  : "#fff"
-                : prefs.dark
-                  ? "#374553"
-                  : "#e4e8ed",
-            borderColor: prefs.dark ? "#2a3b4d" : "#d5dde7",
-            borderWidth: 1,
-          },
-        })),
-        emphasis: { itemStyle: { borderColor: "#536579", borderWidth: 2 } },
-      },
-    ],
-  };
-});
-function inspect(payload: unknown) {
-  selected.value =
-    (payload as { data?: { cell?: HeatCell } }).data?.cell || null;
-}
 </script>
 <template>
-  <div class="chart-wrap">
-    <ChartCanvas
-      :option="option"
-      square
-      label="七日日期乘小时带宽热力图，数值与缺失状态可在下方表格读取。"
-      @select="inspect"
-    />
+  <div
+    class="heatmap-square"
+    aria-label="七日带宽热力图，按天分组，每格代表一小时"
+  >
+    <section
+      v-for="day in days"
+      :key="day.date"
+      class="heatmap-day"
+      :aria-label="day.date"
+    >
+      <header>
+        <strong>{{ day.date.slice(5) }}</strong
+        ><span>{{ weekday(day.date) }}</span>
+      </header>
+      <div class="heatmap-day-hours">
+        <button
+          v-for="cell in day.cells"
+          :key="cell.hour"
+          type="button"
+          class="heatmap-hour"
+          :class="{
+            partial: cell.state === 'PARTIAL',
+            missing: !valid(cell),
+            selected:
+              selected?.date === cell.date && selected?.hour === cell.hour,
+          }"
+          :data-cell="`${cell.date}-${cell.hour}`"
+          :data-state="cell.state"
+          :style="cellStyle(cell)"
+          :title="cellLabel(cell)"
+          :aria-label="cellLabel(cell)"
+          :aria-pressed="
+            selected?.date === cell.date && selected?.hour === cell.hour
+          "
+          @click="selected = cell"
+        >
+          {{ String(cell.hour).padStart(2, "0") }}
+        </button>
+      </div>
+    </section>
+    <div class="heatmap-scale" aria-label="蓝色代表低带宽，红色代表高带宽">
+      <strong>小时平均带宽</strong>
+      <div class="heatmap-colorbar"></div>
+      <div class="heatmap-scale-labels">
+        <span>0 bit/s</span><span>{{ formatRate(maximum) }}</span>
+      </div>
+      <span>蓝色低 · 红色高</span>
+    </div>
   </div>
   <div class="chart-footnote legend-row">
-    <span><i class="legend-box" style="background: #edf3fb"></i>观测为零</span
+    <span><i class="legend-box" style="background: #2166ac"></i>观测为零</span
     ><span><i class="legend-box" style="background: #e4e8ed"></i>缺失</span
     ><span><i class="legend-box" style="background: transparent"></i>未来</span
     ><span
@@ -198,7 +163,7 @@ function inspect(payload: unknown) {
         >{{ data.fromDate }} 至 {{ data.toDate }} · {{ data.timezone }}</span
       ><span
         >{{
-          data.statistic === "sample_mean" ? "设备汇总采样均值" : "时间加权均值"
+          data.statistic === "sample_mean" ? "设备小时样本均值" : "时间加权均值"
         }}
         · {{ data.direction.toUpperCase() }} · {{ data.source }} · 小时末端为
         24:00</span
@@ -237,3 +202,100 @@ function inspect(payload: unknown) {
     </div>
   </details>
 </template>
+
+<style scoped>
+.heatmap-square {
+  width: 100%;
+  max-width: 680px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 2%;
+  padding: 2%;
+  container-type: inline-size;
+}
+.heatmap-day,
+.heatmap-scale {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--noeriva-border);
+  border-radius: 8px;
+  padding: 3% 5%;
+  background: var(--noeriva-surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8%;
+}
+.heatmap-day header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: clamp(10px, 2.4cqw, 14px);
+  line-height: 1;
+}
+.heatmap-day header span {
+  color: var(--noeriva-muted);
+  font-size: 0.85em;
+}
+.heatmap-day-hours {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+}
+.heatmap-hour {
+  aspect-ratio: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font: inherit;
+  font-size: clamp(7px, 1.65cqw, 11px);
+  line-height: 1;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.heatmap-hour.missing {
+  border-color: var(--noeriva-border);
+}
+.heatmap-hour.partial {
+  box-shadow: inset 0 0 0 1px #b58031;
+}
+.heatmap-hour.selected,
+.heatmap-hour:focus-visible {
+  outline: 2px solid var(--noeriva-text);
+  outline-offset: 1px;
+  z-index: 1;
+}
+.heatmap-scale {
+  gap: 9%;
+  font-size: clamp(9px, 2cqw, 12px);
+}
+.heatmap-scale > span {
+  color: var(--noeriva-muted);
+}
+.heatmap-colorbar {
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #2166ac,
+    #92c5de,
+    #f7f7f7,
+    #f4a582,
+    #b2182b
+  );
+}
+.heatmap-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+</style>

@@ -3,7 +3,16 @@ import { computed, ref, watch, onBeforeUnmount } from "vue";
 import { queryString } from "../services/api";
 import { useApiQuery } from "../services/queries";
 import type { Device, Page } from "../services/types";
-const props = defineProps<{ modelValue: string; id?: string }>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    id?: string;
+    siteId?: string;
+    optional?: boolean;
+    ariaLabel?: string;
+  }>(),
+  { optional: false, ariaLabel: "选择关联设备" },
+);
 const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 const text = ref(""),
   query = ref("");
@@ -14,7 +23,10 @@ watch(text, (v) => {
 });
 onBeforeUnmount(() => clearTimeout(timer));
 const { data, error, isPending } = useApiQuery<Page<Device>>(
-  computed(() => `/devices${queryString({ q: query.value, limit: 20 })}`),
+  computed(
+    () =>
+      `/devices${queryString({ q: query.value, siteId: props.siteId, limit: 20 })}`,
+  ),
 );
 </script>
 <template>
@@ -23,17 +35,20 @@ const { data, error, isPending } = useApiQuery<Page<Device>>(
       v-model="text"
       class="input"
       placeholder="按设备名称或 IP 前缀查找"
-      aria-label="查找关联设备"
+      :aria-label="optional ? '查找接口设备' : '查找关联设备'"
     /><select
       :id="id"
       class="input"
       :value="props.modelValue"
-      required
+      :required="!optional"
+      :aria-label="ariaLabel"
       @change="
         emit('update:modelValue', ($event.target as HTMLSelectElement).value)
       "
     >
-      <option value="" disabled>选择关联设备</option>
+      <option value="" :disabled="!optional">
+        {{ optional ? "全部设备" : "选择关联设备" }}
+      </option>
       <option
         v-if="modelValue && !data?.items.some((d) => d.id === modelValue)"
         :value="modelValue"

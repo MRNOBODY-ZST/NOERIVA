@@ -22,4 +22,11 @@ class GaugeHeatmapBuilderTest {
   var result=new GaugeHeatmapBuilder().build("router",ZoneId.of("America/New_York"),"rx",Instant.parse("2026-03-08T20:00:00Z"),300,new MetricRepository.Result(List.of(),"VICTORIAMETRICS",0,List.of()));
   assertEquals("DST_MISSING",result.cells().stream().filter(c->c.date().equals(LocalDate.of(2026,3,8))&&c.hour()==2).findFirst().orElseThrow().state());
  }
+ @Test void invalidBandwidthCannotMakeHeatmapObservedOrFresh(){
+  Instant now=Instant.parse("2026-09-09T12:30:00Z"),validAt=now.minusSeconds(900);
+  var result=new GaugeHeatmapBuilder().build("router",ZoneOffset.UTC,"rx",now,60,new MetricRepository.Result(List.of(new MetricPoint(validAt,80d),new MetricPoint(now.minusSeconds(30),-1d),new MetricPoint(now,Double.NaN)),"VICTORIAMETRICS",0,List.of()));
+  var cell=result.cells().stream().filter(c->c.date().equals(LocalDate.of(2026,9,9))&&c.hour()==12).findFirst().orElseThrow();
+  assertEquals(80d,cell.value());assertEquals(validAt,result.asOf());assertEquals("STALE",result.sourceFreshness());
+  assertTrue(result.qualityFlags().contains("MISSING_SAMPLE"));
+ }
 }

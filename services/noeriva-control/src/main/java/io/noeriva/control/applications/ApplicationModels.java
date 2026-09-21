@@ -15,7 +15,16 @@ public final class ApplicationModels {
         String errorCode,String errorMessage,long credentialRevision,String protocol,int lastRowCount,List<String> qualityFlags){}
     public record Observation(String id,String deviceId,int interfaceIndex,String interfaceName,int protocolIndex,
         String application,String direction,Instant observedAt,String bytes,String packets,Double reportedBps,
-        Double derivedBps,Double derivedPacketsPerSecond,Double intervalSeconds,String sourceEpoch,List<String> qualityFlags){}
+        Double derivedBps,Double derivedPacketsPerSecond,Double intervalSeconds,String sourceEpoch,List<String> qualityFlags,String intervalBytes){
+        public Observation(String id,String deviceId,int interfaceIndex,String interfaceName,int protocolIndex,String application,String direction,Instant observedAt,String bytes,String packets,Double reportedBps,Double derivedBps,Double derivedPacketsPerSecond,Double intervalSeconds,String sourceEpoch,List<String> qualityFlags){this(id,deviceId,interfaceIndex,interfaceName,protocolIndex,application,direction,observedAt,bytes,packets,reportedBps,derivedBps,derivedPacketsPerSecond,intervalSeconds,sourceEpoch,qualityFlags,null);}
+    }
+    public record WindowItem(String application,String direction,List<Integer> interfaceIndices,Double derivedBps,
+        String cumulativeBytes,double coverage,long observationCount,List<String> qualityFlags){}
+    public record TrendPoint(Instant timestamp,Instant end,Double inBps,Double outBps,String inBytes,String outBytes,double coverage){}
+    public record WindowSummary(String deviceId,Instant asOf,Instant observedAt,String source,String mode,String freshness,
+        String rateBasis,Instant from,Instant to,List<Integer> interfaceIndices,long sampleRows,int totalApplications,
+        boolean truncated,List<String> qualityFlags,List<WindowItem> items,String totalBytes,String inBytes,String outBytes,
+        Double meanBps,double coverage,int resolutionSeconds,List<TrendPoint> trend){}
     public record SummaryItem(String application,String direction,List<Integer> interfaceIndices,Double derivedBps,
         Double reportedBps,int observationCount,List<String> qualityFlags){}
     public record Summary(String deviceId,Instant asOf,Instant observedAt,String source,String mode,String freshness,

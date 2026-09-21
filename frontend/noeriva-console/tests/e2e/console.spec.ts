@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 
 async function login(
   page: Page,
@@ -173,76 +173,259 @@ test("alert acknowledgement persists separately from problem recovery", async ({
   ).toBeVisible();
 });
 
+// Inspect the pixels the browser actually renders; no application internals or test-only hooks.
+async function graphPixels(canvas: Locator) {
+  return canvas.evaluate((element) => {
+    const surface = element as HTMLCanvasElement;
+    const context = surface.getContext("2d")!;
+    const { width, height } = surface;
+    const pixels = context.getImageData(0, 0, width, height).data;
+    const palette = new Set([
+      "201,77,85",
+      "215,123,47",
+      "197,163,53",
+      "50,148,106",
+      "240,117,121",
+      "241,166,91",
+      "224,203,108",
+      "101,199,154",
+    ]);
+    const mask = new Uint8Array(width * height);
+    for (let i = 0; i < mask.length; i++) {
+      const offset = i * 4;
+      if (
+        pixels[offset + 3]! > 180 &&
+        palette.has(
+          `${pixels[offset]},${pixels[offset + 1]},${pixels[offset + 2]}`,
+        )
+      )
+        mask[i] = 1;
+    }
+    const scaleX = surface.clientWidth / width,
+      scaleY = surface.clientHeight / height;
+    const points: {
+      x: number;
+      y: number;
+      left: number;
+      top: number;
+      right: number;
+      bottom: number;
+      color: string;
+    }[] = [];
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const queue = [i];
+      mask[i] = 0;
+      let left = width,
+        right = 0,
+        top = height,
+        bottom = 0;
+      for (let index = 0; index < queue.length; index++) {
+        const point = queue[index]!,
+          x = point % width,
+          y = Math.floor(point / width);
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+        for (const next of [
+          point - 1,
+          point + 1,
+          point - width,
+          point + width,
+        ]) {
+          if (next >= 0 && next < mask.length && mask[next]) {
+            mask[next] = 0;
+            queue.push(next);
+          }
+        }
+      }
+      if (queue.length < 5) continue;
+      points.push({
+        x: ((left + right) / 2) * scaleX,
+        y: ((top + bottom) / 2) * scaleY,
+        left: left * scaleX,
+        right: right * scaleX,
+        top: top * scaleY,
+        bottom: bottom * scaleY,
+        color: `${pixels[i * 4]},${pixels[i * 4 + 1]},${pixels[i * 4 + 2]}`,
+      });
+    }
+    return {
+      points,
+      width: surface.clientWidth,
+      height: surface.clientHeight,
+      minX: Math.min(...points.map((p) => p.left)),
+      maxX: Math.max(...points.map((p) => p.right)),
+      minY: Math.min(...points.map((p) => p.top)),
+      maxY: Math.max(...points.map((p) => p.bottom)),
+      outside: points.filter(
+        (p) =>
+          p.left < 24 ||
+          p.top < 24 ||
+          p.right > surface.clientWidth - 24 ||
+          p.bottom > surface.clientHeight - 24,
+      ).length,
+    };
+  });
+}
+
 test("native graph click, drag, zoom and double click are operational", async ({
   page,
 }) => {
   await login(page);
-  await page.getByRole("link", { name: "资产目录", exact: true }).click();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   await page.getByRole("link", { name: "基础设施拓扑", exact: true }).click();
   await expect(page.getByLabel("终端接入推断", { exact: true })).toBeChecked();
   await expect(
     page.getByLabel("三层邻居推断", { exact: true }),
   ).not.toBeChecked();
-  const nodeColors = [
-    "#c94d55",
-    "#d77b2f",
-    "#c5a335",
-    "#32946a",
-    "#f07579",
-    "#f1a65b",
-    "#e0cb6c",
-    "#65c79a",
-  ];
-  const nodeSelector = nodeColors
-    .map((color) => `.graph-area .chart-canvas svg path[fill="${color}"]`)
-    .join(", ");
-  const node = page.locator(nodeSelector).first();
-  await expect(node).toBeVisible();
-  const freeze = page.getByRole("button", { name: "圆形排列", exact: true });
-  await expect(freeze).toBeVisible();
-  await freeze.click();
-  await expect(page.locator(".graph-area .chart-canvas")).toHaveAttribute(
-    "data-graph-fit",
-    "done",
-  );
-  await node.click();
+  const scopedTopology = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === "/api/v1/topology" &&
+      url.searchParams.has("deviceId") &&
+      response.ok()
+    );
+  });
+  await page
+    .getByLabel("限定设备邻域", { exact: true })
+    .selectOption({ label: "lab-sw-01 · 邻域" });
+  await scopedTopology;
+  const graph = page.locator(".graph-area .topology-canvas"),
+    canvas = graph.locator("canvas");
+  await expect(canvas).toBeVisible();
+  await expect(graph).toHaveAttribute("data-initial-graph-fit", "done", {
+    timeout: 25_000,
+  });
+  await page.getByRole("button", { name: "固定布局", exact: true }).click();
+  await page.getByRole("button", { name: "适应视图", exact: true }).click();
+  await expect(graph).toHaveAttribute("data-graph-fit", "done");
+  const initial = await graphPixels(canvas);
+  const node = initial.points[0]!;
+  expect(node).toBeTruthy();
+  await canvas.click({ position: { x: node.x, y: node.y } });
   await expect(
     page.getByRole("link", { name: "打开设备详情", exact: true }),
   ).toBeVisible();
-
+  const destination = await page
+    .getByRole("link", { name: "打开设备详情", exact: true })
+    .getAttribute("href");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Graph canvas unavailable");
+  await page.mouse.move(box.x + node.x, box.y + node.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + node.x + 40, box.y + node.y + 25, { steps: 8 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => {
+      const { points } = await graphPixels(canvas);
+      return Math.min(
+        ...points
+          .filter((point) => point.color === node.color)
+          .map((point) =>
+            Math.hypot(point.x - node.x - 40, point.y - node.y - 25),
+          ),
+      );
+    })
+    .toBeLessThan(5);
+  // vis-network deduplicates gesture starts within50ms; separate these two complete drags.
+  await page.waitForTimeout(60);
+  const beforePan = await graphPixels(canvas);
+  await page.mouse.move(box.x + 20, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 44, box.y + 36, { steps: 6 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await graphPixels(canvas)).minX - beforePan.minX)
+    .toBeCloseTo(24, 0);
   await page.getByRole("button", { name: "放大连接图", exact: true }).click();
   await page.getByRole("button", { name: "缩小连接图", exact: true }).click();
   await page.getByRole("button", { name: "适应视图", exact: true }).click();
-  await expect(page.locator(".graph-area .chart-canvas")).toHaveAttribute(
-    "data-graph-fit",
-    "done",
+  await expect(graph).toHaveAttribute("data-graph-fit", "done");
+  // Pick a rendered edge away from nodes and verify native edge hit testing.
+  const edgePoint = await canvas.evaluate((element) => {
+    const surface = element as HTMLCanvasElement,
+      ctx = surface.getContext("2d")!;
+    const data = ctx.getImageData(0, 0, surface.width, surface.height).data;
+    for (let y = 30; y < surface.height - 30; y += 3)
+      for (let x = 30; x < surface.width - 30; x += 3) {
+        const i = (y * surface.width + x) * 4;
+        if (
+          data[i] === 130 &&
+          data[i + 1] === 148 &&
+          data[i + 2] === 168 &&
+          data[i + 3]! > 160
+        )
+          return {
+            x: (x * surface.clientWidth) / surface.width,
+            y: (y * surface.clientHeight) / surface.height,
+          };
+      }
+    return null;
+  });
+  expect(edgePoint).toBeTruthy();
+  await canvas.click({ position: edgePoint! });
+  await expect(page.locator(".graph-inspector")).toContainText("连线检查器");
+  const iconContrastDuringThemeChange = page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const samples: number[] = [];
+        const luminance = (color: string) => {
+          const rgb = color
+            .match(/[\d.]+/g)!
+            .slice(0, 3)
+            .map((value) => {
+              const c = Number(value) / 255;
+              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            });
+          return rgb[0]! * 0.2126 + rgb[1]! * 0.7152 + rgb[2]! * 0.0722;
+        };
+        const observer = new MutationObserver(() => {
+          observer.disconnect();
+          const start = performance.now();
+          const sample = () => {
+            document
+              .querySelectorAll(".graph-toolbar .icon-btn:not(:disabled)")
+              .forEach((button) => {
+                const foreground = luminance(
+                  getComputedStyle(button.querySelector("svg")!).stroke,
+                );
+                const background = luminance(
+                  getComputedStyle(button.closest(".panel")!).backgroundColor,
+                );
+                samples.push(
+                  (Math.max(foreground, background) + 0.05) /
+                    (Math.min(foreground, background) + 0.05),
+                );
+              });
+            if (performance.now() - start < 200) requestAnimationFrame(sample);
+            else resolve(samples);
+          };
+          sample();
+        });
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme"],
+        });
+      }),
   );
-  // Keep the same glyph: hover/emphasis may reorder SVG paths, so first() is not a node identity after dragging.
-  const draggedNode = await node.elementHandle();
-  if (!draggedNode) throw new Error("Graph node unavailable");
-  const bounds = await draggedNode.boundingBox();
-  if (!bounds) throw new Error("Graph node bounds unavailable");
-  await page.mouse.move(
-    bounds.x + bounds.width / 2,
-    bounds.y + bounds.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    bounds.x + bounds.width / 2 + 40,
-    bounds.y + bounds.height / 2 + 25,
-    { steps: 8 },
-  );
-  await page.mouse.up();
-  const draggedBounds = await draggedNode.boundingBox();
-  if (!draggedBounds) throw new Error("Dragged graph node unavailable");
-  const draggedDistance = Math.hypot(
-    draggedBounds.x - bounds.x,
-    draggedBounds.y - bounds.y,
-  );
-  expect(draggedDistance).toBeGreaterThan(1);
-  expect(draggedDistance).toBeLessThan(100);
-  await draggedNode.click();
   await page.getByRole("button", { name: "切换深色主题", exact: true }).click();
+  const themeContrast = await iconContrastDuringThemeChange;
+  expect(themeContrast.length).toBeGreaterThan(2);
+  expect(Math.min(...themeContrast)).toBeGreaterThanOrEqual(3);
+
+  await expect
+    .poll(
+      async () =>
+        (await graphPixels(canvas)).points.filter((point) =>
+          ["240,117,121", "241,166,91", "224,203,108", "101,199,154"].includes(
+            point.color,
+          ),
+        ).length,
+    )
+    .toBeGreaterThan(0);
   const contrasts = await page
     .locator(".graph-toolbar .btn, .graph-inspector .btn")
     .evaluateAll((buttons) => {
@@ -251,34 +434,35 @@ test("native graph click, drag, zoom and double click are operational", async ({
           .match(/[\d.]+/g)!
           .slice(0, 3)
           .map((value) => {
-            const channel = Number(value) / 255;
-            return channel <= 0.04045
-              ? channel / 12.92
-              : ((channel + 0.055) / 1.055) ** 2.4;
+            const c = Number(value) / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
           });
         return (
           channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722
         );
       };
       return buttons.map((button) => {
-        const style = getComputedStyle(button);
-        const foreground = luminance(style.color),
-          background = luminance(style.backgroundColor);
-        return (
-          (Math.max(foreground, background) + 0.05) /
-          (Math.min(foreground, background) + 0.05)
-        );
+        const style = getComputedStyle(button),
+          front = luminance(style.color),
+          back = luminance(style.backgroundColor);
+        return (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05);
       });
     });
-  expect(contrasts.length).toBeGreaterThanOrEqual(4);
   expect(Math.min(...contrasts)).toBeGreaterThanOrEqual(4.5);
-  expect(await page.locator(nodeSelector).count()).toBeGreaterThan(0);
-  await expect(page.locator(".graph-area svg image")).toHaveCount(0);
-  const destination = await page
-    .getByRole("link", { name: "打开设备详情", exact: true })
-    .getAttribute("href");
-  await node.dblclick();
-  await expect(page).toHaveURL(new RegExp(destination + "(?:\\?.*)?$"));
+  await page.screenshot({
+    path: "/tmp/noeriva-topology-dark.png",
+    fullPage: true,
+  });
+  const darkNode = (await graphPixels(canvas)).points.find((point) =>
+    ["240,117,121", "241,166,91", "224,203,108", "101,199,154"].includes(
+      point.color,
+    ),
+  )!;
+  await canvas.dblclick({ position: { x: darkNode.x, y: darkNode.y } });
+  // Demo nodes are registered; verify native double-click navigation to a real detail page.
+  await expect(page).toHaveURL(/\/devices\/[^/?]+/);
+  expect(destination).toMatch(/^\/devices\//);
+  expect(errors).toEqual([]);
 });
 
 test("dense graph fits real glyph bounds and preserves manual zoom through refresh", async ({
@@ -317,89 +501,102 @@ test("dense graph fits real glyph bounds and preserves manual zoom through refre
     expect(response.ok()).toBe(true);
   }
   await page.getByRole("link", { name: "基础设施拓扑", exact: true }).click();
-  const canvas = page.locator(".graph-area .chart-canvas");
-  await expect(canvas).toHaveAttribute("data-initial-graph-fit", "done", {
+  const graph = page.locator(".graph-area .topology-canvas"),
+    canvas = graph.locator("canvas");
+  await expect(graph).toHaveAttribute("data-initial-graph-fit", "done", {
     timeout: 25_000,
   });
-  const colors = [
-    "#c94d55",
-    "#d77b2f",
-    "#c5a335",
-    "#32946a",
-    "#f07579",
-    "#f1a65b",
-    "#e0cb6c",
-    "#65c79a",
-  ];
-  const measure = () =>
-    canvas.locator("svg").evaluate((svg, colors) => {
-      const viewport = svg.getBoundingClientRect();
-      const nodes = [
-        ...svg.querySelectorAll<SVGGraphicsElement>(
-          "path,circle,rect,polygon,ellipse",
-        ),
-      ]
-        .filter((node) =>
-          colors.includes(node.getAttribute("fill") || node.style.fill),
-        )
-        .map((node) => node.getBoundingClientRect());
-      return {
-        count: nodes.length,
-        outside: nodes.filter(
-          (box) =>
-            box.left < viewport.left + 24 ||
-            box.top < viewport.top + 24 ||
-            box.right > viewport.right - 24 ||
-            box.bottom > viewport.bottom - 24,
-        ).length,
-        minX: Math.min(...nodes.map((box) => box.left - viewport.left)),
-        minY: Math.min(...nodes.map((box) => box.top - viewport.top)),
-        maxX: Math.max(...nodes.map((box) => box.right - viewport.left)),
-        maxY: Math.max(...nodes.map((box) => box.bottom - viewport.top)),
-        width: viewport.width,
-        height: viewport.height,
-      };
-    }, colors);
-  await expect.poll(async () => (await measure()).outside).toBe(0);
-  expect((await measure()).count).toBeGreaterThanOrEqual(50);
-  await expect(
-    page.getByRole("button", { name: "圆形排列", exact: true }),
-  ).toBeVisible();
-  for (let index = 0; index < 4; index++)
+  const fitted = await graphPixels(canvas);
+  expect(fitted.outside).toBe(0);
+  expect(fitted.points.length).toBeGreaterThanOrEqual(50);
+  for (let i = 0; i < 5; i++)
     await page.getByRole("button", { name: "放大连接图", exact: true }).click();
-  await expect.poll(async () => (await measure()).outside).toBeGreaterThan(0);
+  await expect
+    .poll(async () => (await graphPixels(canvas)).outside)
+    .toBeGreaterThan(0);
   await page.getByRole("button", { name: "适应视图", exact: true }).click();
-  await expect(canvas).toHaveAttribute("data-graph-fit", "done");
-  await expect.poll(async () => (await measure()).outside).toBe(0);
-  const fitted = await measure();
+  await expect(graph).toHaveAttribute("data-graph-fit", "done");
+  expect((await graphPixels(canvas)).outside).toBe(0);
   await page.getByRole("button", { name: "放大连接图", exact: true }).click();
   await expect
-    .poll(async () => (await measure()).maxY - (await measure()).minY)
+    .poll(async () => {
+      const current = await graphPixels(canvas);
+      return current.maxY - current.minY;
+    })
     .toBeGreaterThan(fitted.maxY - fitted.minY + 10);
-  const manuallyZoomed = await measure();
+  const manuallyZoomed = await graphPixels(canvas);
   const refresh = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/v1/topology" && response.ok(),
   );
   await page.getByRole("button", { name: "刷新", exact: true }).click();
   await refresh;
-  await expect(canvas).toHaveAttribute("data-initial-graph-fit", "cancelled");
-  const afterRefresh = await measure();
-  expect(afterRefresh.maxY - afterRefresh.minY).toBeCloseTo(
+  await expect(graph).toHaveAttribute("data-initial-graph-fit", "cancelled");
+  const refreshed = await graphPixels(canvas);
+  expect(refreshed.maxY - refreshed.minY).toBeCloseTo(
     manuallyZoomed.maxY - manuallyZoomed.minY,
     0,
   );
-  console.log(
-    JSON.stringify({
-      graphFitEvidence: {
-        initialAndManualFitOutside: fitted.outside,
-        nodeCount: fitted.count,
-        paddingPixels: 24,
-        width: fitted.width,
-        height: fitted.height,
-        glyphBounds: [fitted.minX, fitted.minY, fitted.maxX, fitted.maxY],
-        manualViewPreservedOnRefresh: true,
-      },
-    }),
+  await page.getByRole("button", { name: "列表替代", exact: true }).click();
+  await expect(page.locator(".graph-list .graph-node-button")).toHaveCount(
+    fitted.points.length,
   );
+  await page.getByRole("button", { name: "图形视图", exact: true }).click();
+  await expect
+    .poll(() =>
+      canvas.evaluate((element) => (element as HTMLCanvasElement).width),
+    )
+    .toBeGreaterThan(0);
+  const restored = await graphPixels(canvas);
+  expect(restored.maxY - restored.minY).toBeCloseTo(
+    manuallyZoomed.maxY - manuallyZoomed.minY,
+    0,
+  );
+  await page.getByRole("button", { name: "适应视图", exact: true }).click();
+  await expect(graph).toHaveAttribute("data-graph-fit", "done");
+  await page.screenshot({
+    path: "/tmp/noeriva-topology-dense.png",
+    fullPage: true,
+  });
+});
+
+test("reduced motion graph stabilizes into a draggable static view", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await login(page);
+  await page.getByRole("link", { name: "基础设施拓扑", exact: true }).click();
+  const graph = page.locator(".graph-area .topology-canvas"),
+    canvas = graph.locator("canvas");
+  await expect(
+    page.getByRole("button", { name: "静态布局", exact: true }),
+  ).toBeDisabled();
+  await expect(graph).toHaveAttribute("data-initial-graph-fit", "done", {
+    timeout: 25_000,
+  });
+  const initial = await graphPixels(canvas);
+  expect(initial.points.length).toBeGreaterThan(0);
+  expect(initial.outside).toBe(0);
+  const node = initial.points.find(
+    (point) =>
+      point.x > 40 &&
+      point.x < initial.width - 80 &&
+      point.y > 40 &&
+      point.y < initial.height - 80,
+  )!;
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Graph canvas unavailable");
+  await page.mouse.move(box.x + node.x, box.y + node.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + node.x + 30, box.y + node.y + 20, { steps: 6 });
+  await page.mouse.up();
+  await expect
+    .poll(async () =>
+      Math.min(
+        ...(await graphPixels(canvas)).points.map((point) =>
+          Math.hypot(point.x - node.x - 30, point.y - node.y - 20),
+        ),
+      ),
+    )
+    .toBeLessThan(5);
 });

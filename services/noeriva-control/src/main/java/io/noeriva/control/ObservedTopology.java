@@ -30,7 +30,7 @@ public class ObservedTopology {
     CASE WHEN OCTET_LENGTH(c.last_reading)<=262144 THEN c.last_reading ELSE NULL END last_reading
   FROM (
     SELECT d.organization_id,d.id,d.management_address,c.slot
-    FROM device d JOIN device_connection c ON c.organization_id=d.organization_id AND c.device_id=d.id AND c.enabled=1
+    FROM (SELECT * FROM device WHERE deleted_at IS NULL) d JOIN device_connection c ON c.organization_id=d.organization_id AND c.device_id=d.id AND c.enabled=1
       AND c.slot=(SELECT preferred.slot FROM device_connection preferred WHERE preferred.organization_id=d.organization_id AND preferred.device_id=d.id AND preferred.enabled=1 ORDER BY CASE preferred.slot WHEN 'snmp' THEN 0 WHEN 'ssh' THEN 1 ELSE 2 END LIMIT 1)
     WHERE c.last_success_at>UTC_TIMESTAMP()-INTERVAL 180 SECOND AND c.last_reading IS NOT NULL
     ORDER BY d.organization_id,d.id LIMIT 128

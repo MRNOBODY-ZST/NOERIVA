@@ -96,9 +96,20 @@ class CheckExecutionTest {
         assertThat(execution.run(operator,"check",2).block(Duration.ofSeconds(5)).status()).isEqualTo("PASS");
         assertThat(service.results).hasSize(1);
     }
+    @Test void retiredAssetCannotStartAnotherCheck() {
+        service.value=check("TCP","127.0.0.1:9");service.inventory.retired=true;
+        assertThatThrownBy(()->execution.run(operator,"check",2).block()).isInstanceOf(ApiException.class);
+        assertThat(service.results).isEmpty();
+    }
+    static class TestInventory extends DemoRepository {
+        boolean retired;
+        @Override public Mono<Models.Device> device(String org,String id){return !retired&&"org".equals(org)&&"device".equals(id)?Mono.just(new Models.Device(id,"Target","HOST","site","Site","","","127.0.0.1","UNKNOWN","UNKNOWN",null,1,List.of("summary"))):Mono.empty();}
+    }
     static class TestWorkbench extends WorkbenchService {
         Check value;Operator actor;final List<CheckResultInput> results=new CopyOnWriteArrayList<>();
-        TestWorkbench(){super(null,null);}
+        final TestInventory inventory;
+        TestWorkbench(){this(new TestInventory());}
+        private TestWorkbench(TestInventory inventory){super(null,inventory);this.inventory=inventory;}
         @Override public Mono<Check> check(Operator actor,String id){return "org".equals(actor.organizationId())?Mono.just(value):Mono.error(ApiException.missing());}
         @Override public Mono<CheckResult> reportResult(Operator actor,CheckResultInput input){this.actor=actor;results.add(input);return Mono.just(new CheckResult(input.id(),input.checkId(),input.observedAt(),input.status(),input.latencyMs(),input.message(),input.source(),input.provenance(),Instant.now(),input.definitionRevision()));}
     }

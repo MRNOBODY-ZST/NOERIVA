@@ -24,6 +24,7 @@ import type {
 import { usePreferencesStore } from "../stores/preferences";
 import {
   formatRate,
+  formatBytes,
   formatTime,
   shortNumber,
   stateLabel,
@@ -40,6 +41,7 @@ import DeviceManagement from "../components/DeviceManagement.vue";
 import DeviceCollection from "../components/DeviceCollection.vue";
 import DeviceSensors from "../components/DeviceSensors.vue";
 import DeviceTrafficStatus from "../components/DeviceTrafficStatus.vue";
+import { trendPoints, bucketLabel } from "../utils/metricWindow";
 const router = useRouter();
 const route = useRoute(),
   prefs = usePreferencesStore();
@@ -91,6 +93,12 @@ const interfaceId = ref(String(route.query.interfaceId || "")),
   activeMetric = ref("cpu_percent"),
   hours = ref("24");
 const rangeEnd = ref(new Date().toISOString());
+function selectInterface(value: string) {
+  interfaceId.value = value;
+  void router.replace({
+    query: { ...route.query, interfaceId: value || undefined },
+  });
+}
 const metricLabels: Record<string, { label: string; unit: string }> = {
   cpu_percent: { label: "CPU 使用率", unit: "%" },
   memory_percent: { label: "内存使用率", unit: "%" },
@@ -196,7 +204,7 @@ const {
 } = useApiQuery<MetricSeries>(
   computed(
     () =>
-      `/devices/${encodeURIComponent(id.value)}/metrics${queryString({ metric: activeMetric.value, from: new Date(new Date(rangeEnd.value).getTime() - Number(hours.value) * 3600000).toISOString(), to: rangeEnd.value, points: 120 })}`,
+      `/devices/${encodeURIComponent(id.value)}/metrics${queryString({ metric: activeMetric.value, from: new Date(new Date(rangeEnd.value).getTime() - Number(hours.value) * 3600000).toISOString(), to: rangeEnd.value, points: trendPoints(Number(hours.value)) })}`,
   ),
   () => visibleMonitoring.value && hasMetricSource.value,
   { refetchInterval: false },
@@ -255,8 +263,9 @@ const metricOption = computed<EChartsCoreOption>(() => ({
       formatter: (value: number) =>
         new Intl.DateTimeFormat("zh-CN", {
           timeZone: prefs.timezone,
-          hour: "2-digit",
-          minute: "2-digit",
+          ...(Number(hours.value) > 24
+            ? { month: "2-digit" as const, day: "2-digit" as const }
+            : { hour: "2-digit" as const, minute: "2-digit" as const }),
           hourCycle: "h23",
         }).format(value),
     },
@@ -476,6 +485,7 @@ function refresh() {
                     aria-label="趋势时间范围"
                     :disabled="!hasMetricSource"
                   >
+                    <option value="0.25">近 15 分钟</option>
                     <option value="1">近 1 小时</option>
                     <option value="6">近 6 小时</option>
                     <option value="24">近 24 小时</option>
@@ -509,15 +519,37 @@ function refresh() {
                 empty-title="该指标没有可用样本"
                 empty-description="当前设备、指标和时间范围尚未产生可查询的观测。"
                 @retry="refetchMetric()"
-                ><div class="chart-wrap">
+                ><div v-if="metric?.summary" class="window-stats">
+                  <div>
+                    <strong>{{
+                      formatMetric(metric.summary.mean, metric.unit)
+                    }}</strong
+                    ><small>所选区间平均</small>
+                  </div>
+                  <div v-if="activeMetric.startsWith('bandwidth_')">
+                    <strong>{{
+                      formatBytes(metric.summary.estimatedBytes)
+                    }}</strong
+                    ><small>已观测流量估算</small>
+                  </div>
+                  <div>
+                    <strong
+                      >{{ (metric.summary.coverage * 100).toFixed(0) }}%</strong
+                    ><small>连续观测覆盖</small>
+                  </div>
+                </div>
+                <div class="chart-wrap">
                   <ChartCanvas
                     :option="metricOption"
                     :label="`${metricLabels[activeMetric]?.label}时间序列；完整数值可在下方展开。`"
                   />
                 </div>
                 <p class="chart-footnote">
-                  {{ metric?.source }} · 覆盖
-                  {{ shortNumber((metric?.coverage || 0) * 100) }}% ·
+                  {{ bucketLabel(metric?.resolution) }} · 全部原始样本的区间均值
+                  <template v-if="activeMetric.startsWith('bandwidth_')">
+                    · 流量为带宽积分估算，缺失时段不补值</template
+                  >
+                  · 覆盖 {{ shortNumber((metric?.coverage || 0) * 100) }}% ·
                   {{ metric?.provisional ? "临时汇总" : "当前修订" }}
                   {{ metric?.dataRevision }}
                 </p>
@@ -612,7 +644,10 @@ function refresh() {
               <label for="heat-interface" class="small muted">范围</label
               ><select
                 id="heat-interface"
-                v-model="interfaceId"
+                :value="interfaceId"
+                @change="
+                  selectInterface(($event.target as HTMLSelectElement).value)
+                "
                 style="flex: 1"
               >
                 <option value="">设备总进出口带宽</option>
@@ -650,6 +685,31 @@ function refresh() {
             <h2>设备接口</h2>
             <p>接口配置状态与观测状态独立展示</p>
           </div>
+          <div class="inline-actions">
+            <select
+              :value="interfaceId"
+              aria-label="选择设备接口"
+              @change="
+                selectInterface(($event.target as HTMLSelectElement).value)
+              "
+            >
+              <option value="">全部接口</option>
+              <option
+                v-for="item in sortedInterfaces"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name }}
+              </option>
+            </select>
+            <button
+              class="btn"
+              :disabled="!interfaceId"
+              @click="tab = 'monitoring'"
+            >
+              查看带宽
+            </button>
+          </div>
         </header>
         <QueryState
           :pending="interfacePending"
@@ -677,7 +737,9 @@ function refresh() {
               </thead>
               <tbody>
                 <tr
-                  v-for="item in sortedInterfaces"
+                  v-for="item in sortedInterfaces.filter(
+                    (item) => !interfaceId || item.id === interfaceId,
+                  )"
                   :key="item.id"
                   :class="{ 'wb-select-row': interfaceId === item.id }"
                   :data-interface-id="item.id"

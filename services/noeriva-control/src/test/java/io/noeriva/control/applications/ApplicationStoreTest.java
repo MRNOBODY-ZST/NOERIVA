@@ -47,6 +47,16 @@ import static org.assertj.core.api.Assertions.*;
         var results=Flux.merge(save(0).materialize(),save(0).materialize()).collectList().block(WAIT);assertThat(results.stream().filter(Signal::isOnNext)).hasSize(1);assertThat(results.stream().filter(Signal::isOnError)).hasSize(1);
         assertThat(db.sql("SELECT enabled FROM device_connection WHERE organization_id=:org").bind("org",org).map((r,m)->r.get("enabled",Boolean.class)).one().block(WAIT)).isFalse();
     }
+    @Test void deletedDeviceCannotListConfigureEnableOrAcquireApplicationCollection()throws Exception{
+        var saved=save(0).block(WAIT);
+        db.sql("UPDATE device SET deleted_at=UTC_TIMESTAMP(6) WHERE organization_id=:org AND id=:device").bind("org",org).bind("device",device).fetch().rowsUpdated().block(WAIT);
+        var applicationStore=(ApplicationStore)store;
+        assertThat(applicationStore.sources(org,"",20).collectList().block(WAIT)).isEmpty();
+        assertThat(applicationStore.due(org,20).collectList().block(WAIT)).isEmpty();
+        assertThatThrownBy(()->acquire(saved,false).block(WAIT)).isInstanceOf(ApiException.class);
+        assertThatThrownBy(()->save(saved.revision()).block(WAIT)).isInstanceOf(ApiException.class);
+        assertThatThrownBy(()->state(saved,true).block(WAIT)).isInstanceOf(ApiException.class);
+    }
     @Test void leaseBlocksSecondCollectorAndSettingsMutation()throws Exception{var v=save(0).block(WAIT);var lease=acquire(v,false).block(WAIT);assertThat(lease.status()).isEqualTo("RUNNING");assertThatThrownBy(()->acquire(v,false).block(WAIT)).isInstanceOf(ApiException.class);assertThatThrownBy(()->state(v,false).block(WAIT)).isInstanceOf(ApiException.class);}
     @Test void disabledApplicationsDoNotAcquireScheduledLeaseButAllowManual()throws Exception{var disabled=state(save(0).block(WAIT),false).block(WAIT);assertThat(disabled.revision()).isEqualTo(2);assertThatThrownBy(()->acquire(disabled,true).block(WAIT)).isInstanceOf(ApiException.class);assertThat(acquire(disabled,false).block(WAIT).status()).isEqualTo("RUNNING");}
     @Test void tenantScopeAndSafeSourceProjectionExcludeEncryptedCredential()throws Exception{

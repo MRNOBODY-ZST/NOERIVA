@@ -66,6 +66,7 @@ public class SecurityConfiguration {
                 .pathMatchers("/actuator/health","/actuator/health/**").permitAll()
                 .pathMatchers("/actuator/prometheus").hasAnyRole("ADMIN","METRICS")
                 .pathMatchers("/api/v1/devices/*/connections","/api/v1/devices/*/connections/**").hasRole("ADMIN")
+                .pathMatchers(HttpMethod.DELETE,"/api/v1/devices/*").hasRole("ADMIN")
                 .pathMatchers(HttpMethod.POST,"/api/v1/settings").hasRole("ADMIN")
                 .pathMatchers(HttpMethod.POST,"/api/v1/settings/password").hasAnyRole("ADMIN","OPERATOR","VIEWER")
                 .pathMatchers(HttpMethod.POST,"/api/v1/applications/devices/**","/api/v1/nat-audit/devices/**").hasRole("ADMIN")

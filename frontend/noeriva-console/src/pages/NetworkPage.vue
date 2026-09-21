@@ -1,34 +1,64 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { RefreshCw } from "@lucide/vue";
 import { usePagedQuery, type WorkspaceInterface } from "../services/workbench";
 import { useApiQuery } from "../services/queries";
-import type { Page, Site } from "../services/types";
+import type { Page, Site, Interface } from "../services/types";
 import { usePreferencesStore } from "../stores/preferences";
-import { formatTime, formatRate } from "../utils/format";
+import { formatTime, formatRate, naturalNameSort } from "../utils/format";
 import QueryState from "../components/QueryState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import PagePager from "../components/PagePager.vue";
+import DevicePicker from "../components/DevicePicker.vue";
 const route = useRoute(),
-  prefs = usePreferencesStore(),
-  q = ref(""),
-  siteId = ref(String(route.query.siteId || ""));
+  router = useRouter(),
+  prefs = usePreferencesStore();
+function updateFilters(values: Record<string, string>) {
+  const query = { ...route.query };
+  for (const [key, value] of Object.entries(values)) {
+    if (value) query[key] = value;
+    else delete query[key];
+  }
+  void router.replace({ query });
+}
+const q = computed({
+  get: () => String(route.query.q || ""),
+  set: (value) => updateFilters({ q: value }),
+});
+const siteId = computed({
+  get: () => String(route.query.siteId || ""),
+  set: (value) =>
+    updateFilters({ siteId: value, deviceId: "", interfaceId: "" }),
+});
+const deviceId = computed({
+  get: () => String(route.query.deviceId || ""),
+  set: (value) => updateFilters({ deviceId: value, interfaceId: "" }),
+});
+const interfaceId = computed({
+  get: () => String(route.query.interfaceId || ""),
+  set: (value) => updateFilters({ interfaceId: value }),
+});
 const sites = useApiQuery<Page<Site>>("/sites");
+const interfaces = useApiQuery<Page<Interface>>(
+  () => `/devices/${encodeURIComponent(deviceId.value)}/interfaces`,
+  () => !!deviceId.value,
+);
+const sortedInterfaces = computed(() =>
+  naturalNameSort(interfaces.data.value?.items || []),
+);
 const list = usePagedQuery<WorkspaceInterface>(
   "/workspace/interfaces",
   computed(() => ({
     q: q.value,
     siteId: siteId.value,
-    deviceId: String(route.query.deviceId || ""),
+    deviceId: deviceId.value,
+    interfaceId: deviceId.value ? interfaceId.value : "",
   })),
 );
-watch(
-  () => route.query.siteId,
-  (value) => {
-    siteId.value = String(value || "");
-  },
-);
+function resetFilters() {
+  updateFilters({ q: "", siteId: "", deviceId: "", interfaceId: "" });
+}
 </script>
 <template>
   <div class="page-heading">
@@ -57,15 +87,44 @@ watch(
         >
           {{ site.name }}
         </option></select
-      ><button
-        class="btn"
-        @click="
-          q = '';
-          siteId = '';
-        "
-      >
-        重置
-      </button>
+      ><button class="btn" @click="resetFilters">重置</button>
+    </div>
+    <div class="section-toolbar">
+      <DevicePicker
+        v-model="deviceId"
+        :site-id="siteId"
+        optional
+        aria-label="接口设备"
+      />
+      <div class="form-field">
+        <label for="network-interface">网络接口</label>
+        <select
+          id="network-interface"
+          v-model="interfaceId"
+          aria-label="选择网络接口"
+          :disabled="!deviceId || interfaces.isPending.value"
+        >
+          <option value="">{{ deviceId ? "全部接口" : "请先选择设备" }}</option>
+          <option
+            v-if="
+              interfaceId && !sortedInterfaces.some((i) => i.id === interfaceId)
+            "
+            :value="interfaceId"
+          >
+            已选接口 · {{ interfaceId }}
+          </option>
+          <option
+            v-for="item in sortedInterfaces"
+            :key="item.id"
+            :value="item.id"
+          >
+            {{ item.name }}
+          </option>
+        </select>
+        <small v-if="interfaces.error.value" class="danger-text">{{
+          interfaces.error.value.message
+        }}</small>
+      </div>
     </div>
     <QueryState
       :pending="list.isPending.value"

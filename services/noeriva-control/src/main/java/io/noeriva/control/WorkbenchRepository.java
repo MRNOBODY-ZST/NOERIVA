@@ -83,9 +83,9 @@ public class WorkbenchRepository {
             if(demo)return Mono.fromCallable(()->{synchronized(memoryLock){if(records.size()>=10000)throw capacity();
                 if(records.putIfAbsent(key(org,category,id),new Stored(org,category,id,device,title,status,1,at,at,payload))!=null)throw ApiException.conflict();
                 memoryAudit(org,actor,category+"_CREATED",id);return value;}});
-            return db.sql("INSERT INTO workbench_record(organization_id,category,id,device_id,title,status,revision,payload,created_at,updated_at) VALUES(:org,:category,:id,:device,:title,:status,1,:payload,:at,:at)")
+            return DeviceLifecycle.activeLock(db,org,device).then(db.sql("INSERT INTO workbench_record(organization_id,category,id,device_id,title,status,revision,payload,created_at,updated_at) VALUES(:org,:category,:id,:device,:title,:status,1,:payload,:at,:at)")
                 .bind("org",org).bind("category",category).bind("id",id).bind("device",device).bind("title",title).bind("status",status).bind("payload",payload).bind("at",local(at))
-                .fetch().rowsUpdated().then(audit(org,actor,category+"_CREATED",id)).thenReturn(value).as(tx::transactional);
+                .fetch().rowsUpdated()).then(audit(org,actor,category+"_CREATED",id)).thenReturn(value).as(tx::transactional);
         });
     }
     <T>Mono<T> update(String org,String actor,String category,String id,String title,String status,long expected,Instant at,T value){

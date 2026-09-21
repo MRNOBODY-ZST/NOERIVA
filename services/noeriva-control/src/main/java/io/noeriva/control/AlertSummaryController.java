@@ -26,7 +26,7 @@ public class AlertSummaryController {
             if(db==null)return repository.alerts(org,deviceId,"",Integer.MAX_VALUE)
                 .collect(()->new long[3],(counts,alert)->{switch(alert.state()){case "OPEN"->counts[0]++;case "ACKNOWLEDGED"->counts[1]++;case "RESOLVED"->counts[2]++;default->{}}})
                 .map(counts->new AlertSummary(counts[0],counts[1],counts[2],counts[0]+counts[1],Instant.now()));
-            var query=db.sql("SELECT /*+ MAX_EXECUTION_TIME(3000) */ COALESCE(SUM(state='OPEN'),0) pending,COALESCE(SUM(state='ACKNOWLEDGED'),0) acknowledged,COALESCE(SUM(state='RESOLVED'),0) resolved FROM alert WHERE organization_id=:org"+(deviceId.isEmpty()?"":" AND device_id=:device")).bind("org",org);
+            var query=db.sql("SELECT /*+ MAX_EXECUTION_TIME(3000) */ COALESCE(SUM(state='OPEN'),0) pending,COALESCE(SUM(state='ACKNOWLEDGED'),0) acknowledged,COALESCE(SUM(state='RESOLVED'),0) resolved FROM alert a WHERE organization_id=:org AND EXISTS(SELECT 1 FROM device d WHERE d.organization_id=a.organization_id AND d.id=a.device_id AND d.deleted_at IS NULL)"+(deviceId.isEmpty()?"":" AND device_id=:device")).bind("org",org);
             if(!deviceId.isEmpty())query=query.bind("device",deviceId);
             return query.map((row,meta)->{
                 long open=((Number)row.get("pending")).longValue(),acknowledged=((Number)row.get("acknowledged")).longValue(),resolved=((Number)row.get("resolved")).longValue();

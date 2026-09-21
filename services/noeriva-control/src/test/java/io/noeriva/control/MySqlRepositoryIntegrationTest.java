@@ -294,6 +294,67 @@ class MySqlRepositoryIntegrationTest {
         assertThat(progress(key)).isEqualTo(corrected);
     }
 
+    @Test void deletionRetainsEvidenceAndStopsActiveViewsAndFurtherProjection() {
+        var device=createDevice();
+        repository.project(organization,observation(device.id(),"host","boot",1,Instant.now(),"WARNING")).block(TIMEOUT);
+        var port=repository.registerInterface(organization,"admin",device.id(),new RegisterInterface("eth0","","1000")).block(TIMEOUT);
+        db.sql("INSERT INTO workbench_record(organization_id,category,id,device_id,title,status,revision,payload,created_at,updated_at) VALUES(:org,'EVIDENCE','retained',:device,'evidence','UNSIGNED',1,'{}',UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))")
+            .bind("org",organization).bind("device",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        db.sql("INSERT INTO application_source(organization_id,device_id,interval_seconds,interface_indices,max_rows,status,next_poll_at,quality_flags,enabled) VALUES(:org,:device,60,'[1]',20,'QUEUED',UTC_TIMESTAMP(6),'[]',1)").bind("org",organization).bind("device",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        db.sql("INSERT INTO nat_audit_source(organization_id,device_id,source_address,revision,enabled,quality_flags) VALUES(:org,:device,:address,1,1,'[]')").bind("org",organization).bind("device",device.id()).bind("address",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        db.sql("INSERT INTO workbench_record(organization_id,category,id,device_id,title,status,revision,payload,created_at,updated_at) VALUES(:org,'CHECK','check-retained',:device,'check','ENABLED',1,'{\"enabled\":true,\"archived\":false,\"revision\":1}',UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))")
+            .bind("org",organization).bind("device",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        assertThatThrownBy(()->repository.delete(otherOrganization,"admin",device.id()).block(TIMEOUT)).isInstanceOf(ApiException.class);
+        assertThat(repository.device(organization,device.id()).block(TIMEOUT)).isNotNull();
+        repository.delete(organization,"admin",device.id()).block(TIMEOUT);
+        assertThat(repository.device(organization,device.id()).block(TIMEOUT)).isNull();
+        assertThat(repository.devices(organization,100,"","","","","").collectList().block(TIMEOUT)).isEmpty();
+        assertThat(repository.deviceBatch(organization,java.util.List.of(device.id())).collectList().block(TIMEOUT)).isEmpty();
+        assertThat(repository.overview(organization).block(TIMEOUT).devices()).isZero();
+        var workspace=new MySqlWorkspaceReadRepository(db,JsonMapper.builder().build());
+        assertThat(workspace.interfaces(organization,100,"","","","",Instant.now()).collectList().block(TIMEOUT)).isEmpty();
+        assertThat(workspace.totals(organization,"",Instant.now()).block(TIMEOUT).devices()).isZero();
+        assertThat(workspace.siteHealth(organization,"",Instant.now()).blockFirst(TIMEOUT).devices()).isZero();
+        assertThat(count("device",organization)).isEqualTo(1);
+        assertThat(count("source_current",organization)).isEqualTo(1);
+        assertThat(count("network_interface",organization)).isEqualTo(1);
+        assertThat(count("workbench_record",organization)).isEqualTo(2);
+        for(String table:java.util.List.of("application_source","nat_audit_source"))assertThat(db.sql("SELECT enabled FROM "+table+" WHERE organization_id=:org").bind("org",organization).map((r,m)->r.get("enabled",Boolean.class)).one().block(TIMEOUT)).isFalse();
+        assertThat(db.sql("SELECT status FROM workbench_record WHERE organization_id=:org AND category='CHECK'").bind("org",organization).map((r,m)->r.get("status",String.class)).one().block(TIMEOUT)).isEqualTo("ARCHIVED");
+        assertThat(db.sql("SELECT JSON_UNQUOTE(payload->'$.archived') archived FROM workbench_record WHERE organization_id=:org AND category='CHECK'").bind("org",organization).map((r,m)->r.get("archived",String.class)).one().block(TIMEOUT)).isEqualTo("true");
+        assertThat(db.sql("SELECT COUNT(*) n FROM control_audit WHERE organization_id=:org AND action='DEVICE_DELETED'").bind("org",organization).map((r,m)->r.get("n",Long.class)).one().block(TIMEOUT)).isEqualTo(1);
+        assertThat(repository.project(organization,observation(device.id(),"host","boot",2,Instant.now(),"HEALTHY")).block(TIMEOUT)).isFalse();
+    }
+    @ParameterizedTest @ValueSource(strings={"application","configuration","check"})
+    void otherActiveWorkBlocksDeletion(String kind) {
+        var device=createDevice();
+        String sql=switch(kind){
+            case "application"->"INSERT INTO application_source(organization_id,device_id,interval_seconds,interface_indices,max_rows,status,next_poll_at,quality_flags,enabled,lease_until) VALUES(:org,:device,60,'[1]',20,'RUNNING',UTC_TIMESTAMP(6),'[]',1,UTC_TIMESTAMP(6)+INTERVAL 90 SECOND)";
+            case "configuration"->"INSERT INTO configuration_capture(organization_id,device_id,status,last_attempt_at) VALUES(:org,:device,'RUNNING',UTC_TIMESTAMP(6))";
+            default->"INSERT INTO workbench_record(organization_id,category,id,device_id,title,status,revision,payload,created_at,updated_at) VALUES(:org,'CHECK','busy-check',:device,'check','ENABLED',1,'{}',UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))";
+        };
+        db.sql(sql).bind("org",organization).bind("device",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        if(kind.equals("check"))db.sql("INSERT INTO check_execution(organization_id,check_id,lease_id,lease_until) VALUES(:org,'busy-check','token',UTC_TIMESTAMP(6)+INTERVAL 30 SECOND)").bind("org",organization).fetch().rowsUpdated().block(TIMEOUT);
+        assertThatThrownBy(()->repository.delete(organization,"admin",device.id()).block(TIMEOUT)).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.status).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(repository.device(organization,device.id()).block(TIMEOUT)).isNotNull();
+    }
+    @Test void failedDeletionAuditRollsBackRetirement() {
+        var device=createDevice();
+        assertThatThrownBy(()->repository.delete(organization,"x".repeat(121),device.id()).block(TIMEOUT)).isInstanceOf(RuntimeException.class);
+        assertThat(repository.device(organization,device.id()).block(TIMEOUT)).isNotNull();
+    }
+    @Test void activeDeviceLeaseBlocksDeletionWithoutPartialChanges() {
+        var device=createDevice();
+        db.sql("INSERT INTO device_connection(organization_id,device_id,slot,revision,enabled,settings,ciphertext,status,next_poll_at,source_epoch,lease_token,lease_until) VALUES(:org,:device,'snmp',1,1,'{}','fixture','RUNNING',UTC_TIMESTAMP(6),'test','lease',UTC_TIMESTAMP(6)+INTERVAL 90 SECOND)")
+            .bind("org",organization).bind("device",device.id()).fetch().rowsUpdated().block(TIMEOUT);
+        assertThatThrownBy(()->repository.delete(organization,"admin",device.id()).block(TIMEOUT)).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.status).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(repository.device(organization,device.id()).block(TIMEOUT)).isNotNull();
+        db.sql("UPDATE device_connection SET lease_until=NULL,lease_token='' WHERE organization_id=:org").bind("org",organization).fetch().rowsUpdated().block(TIMEOUT);
+        repository.delete(organization,"admin",device.id()).block(TIMEOUT);
+        assertThat(db.sql("SELECT enabled FROM device_connection WHERE organization_id=:org").bind("org",organization).map((r,m)->r.get("enabled",Boolean.class)).one().block(TIMEOUT)).isFalse();
+        assertThatThrownBy(()->DeviceLifecycle.activeLock(db,organization,device.id()).block(TIMEOUT)).isInstanceOf(ApiException.class);
+    }
+
     private CreateDevice deviceInput() {
         return new CreateDevice("Integration device", "HOST", "site-a", "Test", "Test", "192.0.2.10");
     }

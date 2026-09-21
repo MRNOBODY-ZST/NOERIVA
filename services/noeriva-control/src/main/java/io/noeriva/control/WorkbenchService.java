@@ -130,6 +130,7 @@ public class WorkbenchService {
         return device(a,in.deviceId()).then(store.create(a.organizationId(),a.username(),"CHECK",value.id(),value.deviceId(),value.name(),value.enabled()?"ENABLED":"DISABLED",at,value));
     }
     public Mono<Models.Page<Check>> checks(Operator a,String device,String q,String cursor,int limit){return store.list(a.organizationId(),"CHECK",device,"",q,cursor,limit+1,Check.class).collectList().map(rows->page(rows,limit,Check::createdAt,Check::id,store.mode()));}
+    public Mono<Check> activeCheck(Operator a,String id){return check(a,id).flatMap(c->device(a,c.deviceId()).thenReturn(c));}
     public Mono<Check> check(Operator a,String id){return required(a,"CHECK",id,Check.class);}
     public Mono<Check> updateCheck(Operator a,String id,CheckUpdate in){
         target(in.target());return check(a,id).flatMap(old->{if(old.archived()||old.revision()!=in.revision())throw ApiException.conflict();Instant at=now();

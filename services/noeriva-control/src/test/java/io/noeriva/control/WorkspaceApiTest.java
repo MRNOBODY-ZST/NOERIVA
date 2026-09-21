@@ -46,7 +46,7 @@ class WorkspaceApiTest {
             .jsonPath("$.totals.devices").isEqualTo(5).jsonPath("$.totals.warning").isEqualTo(1)
             .jsonPath("$.totals.unknown").isEqualTo(1).jsonPath("$.totals.stale").isEqualTo(1)
             .jsonPath("$.siteHealth.length()").isEqualTo(2).jsonPath("$.priorityDevices.length()").isEqualTo(2)
-            .jsonPath("$.recentEventsStatus").isEqualTo("AVAILABLE").jsonPath("$.recentEvents.length()").isEqualTo(5)
+            .jsonPath("$.recentEventsStatus").isEqualTo("AVAILABLE").jsonPath("$.recentEvents.length()").isEqualTo(2).jsonPath("$.recentEvents[0].severity").isEqualTo("WARNING")
             .jsonPath("$.trafficSource.deviceName").isEqualTo("core-asr-01");
         viewer().get().uri("/api/v1/workspace/overview?siteId=edge-b").exchange().expectStatus().isOk().expectBody()
             .jsonPath("$.totals.devices").isEqualTo(0).jsonPath("$.recentEvents.length()").isEqualTo(0).jsonPath("$.trafficSource").isEmpty()
@@ -59,5 +59,10 @@ class WorkspaceApiTest {
         viewer().get().uri("/api/v1/workspace/search?q=x").exchange().expectStatus().isBadRequest();
         viewer().get().uri("/api/v1/workspace/search?q=compute&limit=21").exchange().expectStatus().isBadRequest();
         client.get().uri("/api/v1/workspace/overview").exchange().expectStatus().isUnauthorized();
+    }
+    @Test void interfaceSelectionIsExactAndMustBelongToSelectedDevice(){
+        viewer().get().uri("/api/v1/workspace/interfaces?deviceId=compute-07&interfaceId=if-compute-1").exchange().expectStatus().isOk().expectBody().jsonPath("$.items.length()").isEqualTo(1).jsonPath("$.items[0].id").isEqualTo("if-compute-1");
+        viewer().get().uri("/api/v1/workspace/interfaces?deviceId=compute-07&interfaceId=if-core-1").exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
+        viewer().get().uri("/api/v1/workspace/interfaces?interfaceId=if-core-1").exchange().expectStatus().isBadRequest();
     }
 }

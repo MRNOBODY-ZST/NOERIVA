@@ -910,6 +910,8 @@ select {
   gap: 16px;
 }
 .form-field {
+  min-width: 0;
+  align-content: start;
   display: grid;
   gap: 6px;
   font-size: 13px;
@@ -928,7 +930,8 @@ select {
 }
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 16px;
 }
 .login-page {
@@ -2151,12 +2154,17 @@ select {
 @media (prefers-reduced-motion: no-preference) {
   .nav-link,
   .btn,
-  .icon-btn,
   .command-result {
     transition:
       background-color 160ms ease,
       color 160ms ease,
       border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+  /* Transparent icon buttons must switch foreground with their parent theme. */
+  .icon-btn {
+    transition:
       box-shadow 160ms ease,
       transform 160ms ease;
   }
@@ -2194,4 +2202,52 @@ html[data-motion="reduced"] *::after {
   animation-duration: 0.01ms !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+/* Consistent interval summaries and controls across monitoring views. */
+.window-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 1px;
+  margin: 16px 18px;
+  overflow: hidden;
+  border: 1px solid var(--noeriva-border);
+  border-radius: 8px;
+  background: var(--noeriva-border);
+}
+.window-stats > div {
+  min-width: 0;
+  background: var(--noeriva-surface);
+  padding: 15px 14px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.window-stats strong {
+  font-size: clamp(17px, 1.7vw, 23px);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.window-stats small {
+  color: var(--noeriva-muted);
+  font-size: 11px;
+}
+.form-grid .input,
+.form-grid select {
+  min-width: 0;
+  width: 100%;
+}
+.form-grid input.input,
+.form-grid select {
+  height: 38px;
+}
+.panel-head > div {
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .window-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 12px;
+  }
 }

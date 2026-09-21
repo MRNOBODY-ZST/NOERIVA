@@ -1,6 +1,7 @@
 package io.noeriva.control;
 
 import io.r2dbc.spi.Row;
+import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Profile;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -26,7 +27,7 @@ public class MySqlRepository implements ControlRepository {
     private Device device(Row r){return new Device(r.get("id",String.class),r.get("name",String.class),r.get("type",String.class),r.get("site_id",String.class),r.get("site_name",String.class),r.get("vendor",String.class),r.get("model",String.class),r.get("management_address",String.class),r.get("health",String.class),r.get("availability",String.class),instant(r,"last_seen"),r.get("current_revision",Long.class),List.of(decode(r.get("capabilities",String.class),String[].class)));}
     private Alert alert(Row r){return new Alert(r.get("id",String.class),r.get("device_id",String.class),r.get("device_name",String.class),r.get("severity",String.class),r.get("state",String.class),r.get("title",String.class),instant(r,"opened_at"),instant(r,"acknowledged_at"),r.get("acknowledged_by",String.class),r.get("revision",Long.class));}
     @Override public Flux<Device> devices(String org,int limit,String cursor,String q,String site,String type,String health) {
-        String sql=DEVICE_SELECT+"WHERE d.organization_id=:org AND d.id>:cursor";
+        String sql=DEVICE_SELECT+"WHERE d.deleted_at IS NULL AND d.organization_id=:org AND d.id>:cursor";
         if(!q.isEmpty())sql+=" AND (d.name LIKE :q OR d.management_address LIKE :q)";
         if(!site.isEmpty())sql+=" AND d.site_id=:site";
         if(!type.isEmpty())sql+=" AND d.type=:type";
@@ -38,8 +39,8 @@ public class MySqlRepository implements ControlRepository {
         if(!health.isEmpty())spec=spec.bind("health",health);
         return spec.map((r,m)->device(r)).all();
     }
-    @Override public Mono<Device> device(String org,String id){return db.sql(DEVICE_SELECT+"WHERE d.organization_id=:org AND d.id=:id").bind("org",org).bind("id",id).map((r,m)->device(r)).one();}
-    @Override public Flux<Device> deviceBatch(String org,List<String> ids){return ids.isEmpty()?Flux.empty():db.sql(DEVICE_SELECT+"WHERE d.organization_id=:org AND d.id IN (:ids) ORDER BY d.id").bind("org",org).bind("ids",ids).map((r,m)->device(r)).all();}
+    @Override public Mono<Device> device(String org,String id){return db.sql(DEVICE_SELECT+"WHERE d.deleted_at IS NULL AND d.organization_id=:org AND d.id=:id").bind("org",org).bind("id",id).map((r,m)->device(r)).one();}
+    @Override public Flux<Device> deviceBatch(String org,List<String> ids){return ids.isEmpty()?Flux.empty():db.sql(DEVICE_SELECT+"WHERE d.deleted_at IS NULL AND d.organization_id=:org AND d.id IN (:ids) ORDER BY d.id").bind("org",org).bind("ids",ids).map((r,m)->device(r)).all();}
     @Override public Mono<Device> create(String org,String actor,CreateDevice in) {
         String id=UUID.randomUUID().toString();
         return sites(org).filter(s->s.id().equals(in.siteId())).next().switchIfEmpty(Mono.error(ApiException.missing())).flatMap(site ->
@@ -48,18 +49,36 @@ public class MySqlRepository implements ControlRepository {
             .then(outbox(org,id,"DeviceCreated",Map.of("id",id,"name",in.name())))
             .then(audit(org,actor,"DEVICE_CREATED",id)).then(device(org,id))).as(tx::transactional);
     }
+    @Override public Mono<Void> delete(String org,String actor,String id) {
+        String busy="SELECT (EXISTS(SELECT 1 FROM device_connection WHERE organization_id=:org AND device_id=:device AND lease_until>UTC_TIMESTAMP(6))"
+            +" OR EXISTS(SELECT 1 FROM application_source WHERE organization_id=:org AND device_id=:device AND lease_until>UTC_TIMESTAMP(6))"
+            +" OR EXISTS(SELECT 1 FROM configuration_capture WHERE organization_id=:org AND device_id=:device AND status='RUNNING' AND last_attempt_at>UTC_TIMESTAMP(6)-INTERVAL 90 SECOND)"
+            +" OR EXISTS(SELECT 1 FROM check_execution e JOIN workbench_record r ON r.organization_id=e.organization_id AND r.id=e.check_id AND r.category='CHECK' WHERE r.organization_id=:org AND r.device_id=:device AND e.lease_until>UTC_TIMESTAMP(6))) busy";
+        return DeviceLifecycle.activeLock(db,org,id)
+            .then(db.sql(busy).bind("org",org).bind("device",id).map((r,m)->((Number)r.get("busy")).intValue()!=0).one())
+            .flatMap(running->{if(running)return Mono.error(new ApiException(HttpStatus.CONFLICT,"DEVICE_BUSY","设备正在采集或执行检查，请稍后重试删除。"));
+                return db.sql("UPDATE device SET deleted_at=UTC_TIMESTAMP(6),deleted_by=:actor,revision=revision+1 WHERE organization_id=:org AND id=:device")
+                    .bind("actor",actor).bind("org",org).bind("device",id).fetch().rowsUpdated()
+                    .then(db.sql("UPDATE device_connection SET enabled=0,status='DISABLED',revision=revision+1,lease_token='',lease_until=NULL WHERE organization_id=:org AND device_id=:device").bind("org",org).bind("device",id).fetch().rowsUpdated())
+                    .then(db.sql("UPDATE application_source SET enabled=0,status='DISABLED',revision=revision+1,lease_token='',lease_until=NULL WHERE organization_id=:org AND device_id=:device").bind("org",org).bind("device",id).fetch().rowsUpdated())
+                    .then(db.sql("UPDATE nat_audit_source SET enabled=0,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE organization_id=:org AND device_id=:device").bind("org",org).bind("device",id).fetch().rowsUpdated())
+                    .then(db.sql("UPDATE workbench_record SET status='ARCHIVED',payload=JSON_SET(payload,'$.enabled',CAST('false' AS JSON),'$.archived',CAST('true' AS JSON),'$.revision',revision+1,'$.updatedAt',:now),revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE organization_id=:org AND device_id=:device AND category='CHECK' AND status<>'ARCHIVED'").bind("now",Instant.now().toString()).bind("org",org).bind("device",id).fetch().rowsUpdated())
+                    .then(audit(org,actor,"DEVICE_DELETED",id)).then(outbox(org,id,"DeviceDeleted",Map.of("id",id,"historyRetained",true)));
+            }).as(tx::transactional);
+    }
+    @Override public Flux<Event> actionableEvents(String org,Instant from,Instant to,int limit){return history.actionableEvents(org,from,to,limit);}
     @Override public Flux<Site> sites(String org){return db.sql("SELECT id,name,timezone FROM site WHERE organization_id=:org ORDER BY id LIMIT 1000").bind("org",org).map((r,m)->new Site(r.get("id",String.class),r.get("name",String.class),r.get("timezone",String.class))).all();}
     @Override public Flux<SourceState> sources(String org,String device){return db.sql("SELECT sc.payload FROM source_current sc WHERE sc.organization_id=:org AND sc.device_id=:device AND "+CurrentStateSql.activeSource("sc")+" ORDER BY sc.source_id LIMIT 32").bind("org",org).bind("device",device).map((r,m)->ProjectionPolicy.source(decode(r.get("payload",String.class),Observation.class),Instant.now())).all();}
     @Override public Flux<NetworkInterface> interfaces(String org,String device){return db.sql("SELECT payload FROM network_interface WHERE organization_id=:org AND device_id=:device ORDER BY id LIMIT 1000").bind("org",org).bind("device",device).map((r,m)->decode(r.get("payload",String.class),NetworkInterface.class)).all();}
     @Override public Mono<String> interfaceSource(String org,String device,String interfaceId){return db.sql("SELECT /*+ MAX_EXECUTION_TIME(3000) */ source_id FROM network_interface WHERE organization_id=:org AND device_id=:device AND id=:interface LIMIT 1").bind("org",org).bind("device",device).bind("interface",interfaceId).map((r,m)->r.get("source_id",String.class)).one();}
     @Override public Mono<NetworkInterface> registerInterface(String org,String actor,String device,RegisterInterface input){
         var result=new NetworkInterface(UUID.randomUUID().toString(),device,input.name(),input.macAddress(),input.speedBps(),"UNKNOWN","UNKNOWN");
-        return device(org,device).switchIfEmpty(Mono.error(ApiException.missing())).then(db.sql("INSERT INTO network_interface(organization_id,id,device_id,payload) VALUES(:org,:id,:device,:payload)").bind("org",org).bind("id",result.id()).bind("device",device).bind("payload",encode(result)).fetch().rowsUpdated())
+        return DeviceLifecycle.activeLock(db,org,device).then(db.sql("INSERT INTO network_interface(organization_id,id,device_id,payload) VALUES(:org,:id,:device,:payload)").bind("org",org).bind("id",result.id()).bind("device",device).bind("payload",encode(result)).fetch().rowsUpdated())
             .then(db.sql("UPDATE device SET capabilities='[\"summary\",\"metrics\",\"interfaces\",\"heatmap\",\"connections\"]',revision=revision+1 WHERE organization_id=:org AND id=:device").bind("org",org).bind("device",device).fetch().rowsUpdated())
             .then(audit(org,actor,"INTERFACE_REGISTERED",result.id())).then(outbox(org,device,"InterfaceRegistered",result)).thenReturn(result).as(tx::transactional);
     }
     @Override public Flux<Alert> alerts(String org,String device,String state,int limit){
-        String sql="SELECT * FROM alert WHERE organization_id=:org"+(!device.isEmpty()?" AND device_id=:device":"")+(!state.isEmpty()?" AND state=:state":"")+" ORDER BY opened_at DESC,id DESC LIMIT :limit";
+        String sql="SELECT * FROM alert a WHERE organization_id=:org AND EXISTS(SELECT 1 FROM device d WHERE d.organization_id=a.organization_id AND d.id=a.device_id AND d.deleted_at IS NULL)"+(!device.isEmpty()?" AND device_id=:device":"")+(!state.isEmpty()?" AND state=:state":"")+" ORDER BY opened_at DESC,id DESC LIMIT :limit";
         var query=db.sql(sql).bind("org",org).bind("limit",limit);if(!device.isEmpty())query=query.bind("device",device);if(!state.isEmpty())query=query.bind("state",state);return query.map((r,m)->alert(r)).all();
     }
     @Override public Mono<Alert> acknowledge(String org,String actor,String id,long revision){
@@ -70,18 +89,24 @@ public class MySqlRepository implements ControlRepository {
     }
     @Override public Flux<Event> events(String org,String device,Instant from,Instant to,String cursor,int limit){return history.events(org,device,from,to,cursor,limit);}
     @Override public Flux<Collector> collectors(String org){return db.sql("SELECT payload FROM collector WHERE organization_id=:org ORDER BY id LIMIT 1000").bind("org",org).map((r,m)->decode(r.get("payload",String.class),Collector.class)).all();}
-    @Override public Flux<Edge> edges(String org,String device,int limit){var sql="SELECT payload FROM topology_edge WHERE organization_id=:org"+(!device.isEmpty()?" AND (source_id=:device OR target_id=:device)":"")+" ORDER BY id LIMIT :limit";var query=db.sql(sql).bind("org",org).bind("limit",limit);if(!device.isEmpty())query=query.bind("device",device);return query.map((r,m)->decode(r.get("payload",String.class),Edge.class)).all();}
+    @Override public Flux<Edge> edges(String org,String device,int limit){var sql="SELECT e.payload FROM topology_edge e WHERE e.organization_id=:org AND EXISTS(SELECT 1 FROM device d WHERE d.organization_id=e.organization_id AND d.id=e.source_id AND d.deleted_at IS NULL) AND EXISTS(SELECT 1 FROM device d WHERE d.organization_id=e.organization_id AND d.id=e.target_id AND d.deleted_at IS NULL)"+(!device.isEmpty()?" AND (source_id=:device OR target_id=:device)":"")+" ORDER BY id LIMIT :limit";var query=db.sql(sql).bind("org",org).bind("limit",limit);if(!device.isEmpty())query=query.bind("device",device);return query.map((r,m)->decode(r.get("payload",String.class),Edge.class)).all();}
     @Override public Mono<Overview> overview(String org){
-        return db.sql("SELECT "+CurrentStateSql.counts()+" FROM device d LEFT JOIN device_current c ON c.organization_id=d.organization_id AND c.device_id=d.id "+CurrentStateSql.join("UTC_TIMESTAMP(6)-INTERVAL 180 SECOND")+" WHERE d.organization_id=:org")
+        return db.sql("SELECT "+CurrentStateSql.counts()+" FROM device d LEFT JOIN device_current c ON c.organization_id=d.organization_id AND c.device_id=d.id "+CurrentStateSql.join("UTC_TIMESTAMP(6)-INTERVAL 180 SECOND")+" WHERE d.deleted_at IS NULL AND d.organization_id=:org")
             .bind("org",org).map((r,m)->new long[]{number(r,"devices"),number(r,"critical"),number(r,"warning"),number(r,"healthy"),number(r,"unknown"),number(r,"stale")}).one()
-            .zipWith(db.sql("SELECT COUNT(*) n FROM alert WHERE organization_id=:org AND state<>'RESOLVED'").bind("org",org).map((r,m)->number(r,"n")).one())
+            .zipWith(db.sql("SELECT COUNT(*) n FROM alert a JOIN device d ON d.organization_id=a.organization_id AND d.id=a.device_id WHERE a.organization_id=:org AND d.deleted_at IS NULL AND a.state<>'RESOLVED'").bind("org",org).map((r,m)->number(r,"n")).one())
             .zipWith(db.sql("SELECT COUNT(*) n FROM collector WHERE organization_id=:org").bind("org",org).map((r,m)->number(r,"n")).one())
             .map(t->{var a=t.getT1().getT1();return new Overview(a[0],a[1],a[2],a[3],a[4],a[5],t.getT1().getT2(),t.getT2(),Instant.now(),"CONNECTED");});
     }
     private long number(Row row,String key){return ((Number)row.get(key)).longValue();}
     @Override public Mono<Boolean> project(String org,Observation next){
+        // Accepted history must drain after retirement, without reviving current state or retrying forever.
+        return db.sql("SELECT deleted_at FROM device WHERE organization_id=:org AND id=:device FOR UPDATE")
+            .bind("org",org).bind("device",next.deviceId()).map((r,m)->r.get("deleted_at",LocalDateTime.class)==null).one()
+            .switchIfEmpty(Mono.error(ApiException.missing())).flatMap(active->active?projectActive(org,next):Mono.just(false)).as(tx::transactional);
+    }
+    private Mono<Boolean> projectActive(String org,Observation next){
         // Lock one existing device row to serialize source replacement and its device checkpoint.
-        return db.sql("SELECT id FROM device WHERE organization_id=:org AND id=:device FOR UPDATE").bind("org",org).bind("device",next.deviceId()).map((r,m)->r.get("id",String.class)).one().switchIfEmpty(Mono.error(ApiException.missing()))
+        return db.sql("SELECT id FROM device WHERE organization_id=:org AND id=:device AND deleted_at IS NULL FOR UPDATE").bind("org",org).bind("device",next.deviceId()).map((r,m)->r.get("id",String.class)).one().switchIfEmpty(Mono.error(ApiException.missing()))
             .flatMap(id->db.sql("SELECT payload FROM source_current WHERE organization_id=:org AND device_id=:device AND source_id=:source").bind("org",org).bind("device",id).bind("source",next.sourceId())
                 .map((r,m)->Optional.of(decode(r.get("payload",String.class),Observation.class))).one().defaultIfEmpty(Optional.empty()))
             .flatMap(old->{if(!ProjectionPolicy.accepts(old.orElse(null),next,Instant.now()))return Mono.just(false);

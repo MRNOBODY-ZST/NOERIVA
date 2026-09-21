@@ -47,4 +47,12 @@ class WorkspaceHistoryFailureTest {
         assertThat(workspace.siteHealth("other","",now).collectList().block()).isEmpty();
         assertThat(workspace.totals("other","",now).block().devices()).isZero();
     }
+    @Test void overviewRecentEventsOnlyContainsActionableSeveritiesBeyondHealthyNoise() {
+        var inventory=new DemoRepository(){@Override public Flux<Event> events(String org,String device,Instant from,Instant to,String cursor,int limit){
+            var now=Instant.now();var noise=java.util.stream.IntStream.range(0,8).mapToObj(i->new Event("healthy-"+i,"compute-07","DeviceSummaryObserved","HEALTHY","采集正常",now.minusSeconds(i),now,"TEST",List.of())).toList();
+            return Flux.fromIterable(noise).concatWith(Flux.just(new Event("fault","compute-07","DeviceCollectionFailed","ERROR","连接失败",now.minusSeconds(10),now,"TEST",List.of()))).take(limit);
+        }};
+        var overview=new WorkspaceController(new DemoWorkspaceReadRepository(inventory),inventory).overview(USER,"").block();
+        assertThat(overview.recentEvents()).extracting(Event::id).containsExactly("fault");
+    }
 }

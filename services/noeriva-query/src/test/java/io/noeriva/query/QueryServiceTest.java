@@ -41,4 +41,38 @@ class QueryServiceTest {
         StepVerifier.create(service(source,noMetrics).heatmap("org-a","device-a","eth0","Asia/Kolkata","rx"))
             .assertNext(r->assertEquals(168,r.cells().size())).verifyComplete();
     }
+    @Test void averagesAllSamplesWithinBucketsInsteadOfReturningSelectedInstants() {
+        Instant start=now.minusSeconds(120);
+        MetricRepository samples=(o,d,m,f,t,p)->Mono.just(new MetricRepository.Result(List.of(
+            new MetricPoint(start,0d),new MetricPoint(start.plusSeconds(30),60d),
+            new MetricPoint(start.plusSeconds(40),120d),new MetricPoint(start.plusSeconds(90),600d)),"VICTORIAMETRICS",0,List.of()));
+        var query=service(noRollups,samples);
+        try {
+            StepVerifier.create(query.metrics("org-a","device-a","bandwidth_rx_bps",start,now,3)).assertNext(r->{
+                assertEquals(2,r.points().size());
+                assertEquals(start.plusSeconds(60),r.points().getFirst().timestamp());
+                assertEquals(60d,r.points().getFirst().value());
+                assertEquals(600d,r.points().getLast().value());
+                assertEquals(195d,r.summary().mean(),"Whole-window mean weights original sample counts");
+                assertEquals(4,r.summary().sampleCount());
+                assertEquals("4125",r.summary().estimatedBytes());
+                assertEquals(.75,r.summary().coverage());
+                assertTrue(r.qualityFlags().contains("VOLUME_ESTIMATE"));
+            }).verifyComplete();
+        } finally { query.close(); }
+    }
+    @Test void metricFreshnessUsesOnlySamplesAcceptedByItsStatistic() {
+        Instant validAt=now.minusSeconds(900);
+        MetricRepository samples=(o,d,m,f,t,p)->Mono.just(new MetricRepository.Result(List.of(
+            new MetricPoint(validAt,80d),new MetricPoint(now.minusSeconds(30),-1d),new MetricPoint(now,Double.NaN)),"VICTORIAMETRICS",0,List.of()));
+        var query=service(noRollups,samples);
+        try {
+            StepVerifier.create(query.metrics("org-a","device-a","bandwidth_rx_bps",now.minusSeconds(1800),now,30)).assertNext(r->{
+                assertEquals(validAt,r.asOf());assertEquals("STALE",r.sourceFreshness());assertEquals(1,r.summary().sampleCount());
+            }).verifyComplete();
+            StepVerifier.create(query.metrics("org-a","device-a","temperature_celsius",now.minusSeconds(1800),now,30)).assertNext(r->{
+                assertEquals(now.minusSeconds(30),r.asOf());assertEquals("FRESH",r.sourceFreshness());assertEquals(2,r.summary().sampleCount());
+            }).verifyComplete();
+        } finally {query.close();}
+    }
 }

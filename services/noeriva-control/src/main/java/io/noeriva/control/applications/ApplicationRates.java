@@ -21,19 +21,19 @@ final class ApplicationRates {
             String epoch=hash(credentialRevision+"/"+next.engineId()+"/"+next.engineBoots()+"/"+row.interfaceIdentity()+"/"+row.enableTime()+"/"+row.protocolIndex()+"/"+row.application());
             for(String direction:List.of("IN","OUT")){
                 boolean in=direction.equals("IN");String bytes=in?row.inBytes():row.outBytes(),packets=in?row.inPackets():row.outPackets();
-                var flags=new LinkedHashSet<>(next.qualityFlags());flags.addAll(row.qualityFlags());Double bps=null,pps=null,interval=null;
+                var flags=new LinkedHashSet<>(next.qualityFlags());flags.addAll(row.qualityFlags());Double bps=null,pps=null,interval=null;String intervalBytes=null;
                 boolean identity=base!=null&&row.interfaceIdentity()!=null&&row.enableTime()!=null&&Objects.equals(base.interfaceIdentity(),row.interfaceIdentity())&&Objects.equals(base.enableTime(),row.enableTime())&&base.application().equals(row.application());
                 if(!continuity||!identity){flags.add(old!=null&&seconds>Math.max(180,configuredInterval*3)?"NBAR_GAP":"NBAR_BASELINE_REQUIRED");}
                 else{
                     BigInteger delta=delta(bytes,in?base.inBytes():base.outBytes()),packetDelta=delta(packets,in?base.inPackets():base.outPackets());
                     if(delta!=null&&delta.signum()<0||packetDelta!=null&&packetDelta.signum()<0)flags.add("NBAR_COUNTER_RESET");
                     else{
-                        if(delta!=null)bps=delta.doubleValue()*8/seconds;if(packetDelta!=null)pps=packetDelta.doubleValue()/seconds;
+                        if(delta!=null){bps=delta.doubleValue()*8/seconds;intervalBytes=delta.toString();}if(packetDelta!=null)pps=packetDelta.doubleValue()/seconds;
                         if(bps!=null||pps!=null)interval=seconds;
                         if(delta==null||packetDelta==null)flags.add("NBAR_COUNTER_UNAVAILABLE");
                     }
                 }
-                result.add(new Observation(hash(sampleId+"/"+key(row)+"/"+direction),device,row.interfaceIndex(),row.interfaceName(),row.protocolIndex(),row.application(),direction,next.observedAt(),bytes,packets,in?row.reportedInBps():row.reportedOutBps(),bps,pps,interval,epoch,List.copyOf(flags)));
+                result.add(new Observation(hash(sampleId+"/"+key(row)+"/"+direction),device,row.interfaceIndex(),row.interfaceName(),row.protocolIndex(),row.application(),direction,next.observedAt(),bytes,packets,in?row.reportedInBps():row.reportedOutBps(),bps,pps,interval,epoch,List.copyOf(flags),intervalBytes));
             }
         }
         return List.copyOf(result);

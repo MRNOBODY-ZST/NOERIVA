@@ -26,13 +26,26 @@ public class WorkspaceController {
     }
     @GetMapping("/interfaces") public Mono<Page<WorkspaceInterface>> interfaces(@AuthenticationPrincipal Operator user,
         @RequestParam(defaultValue="50") @Min(1) @Max(100) int limit,@RequestParam(defaultValue="") @Size(max=4096) String cursor,
-        @RequestParam(defaultValue="") @Size(max=120) String q,@RequestParam(defaultValue="") @Size(max=64) String siteId,@RequestParam(defaultValue="") @Size(max=64) String deviceId){
-        Instant asOf=Instant.now();return workspace.interfaces(user.organizationId(),limit+1,cursor,q.trim(),siteId,deviceId,asOf).collectList()
+        @RequestParam(defaultValue="") @Size(max=120) String q,@RequestParam(defaultValue="") @Size(max=64) String siteId,@RequestParam(defaultValue="") @Size(max=64) String deviceId,
+        @RequestParam(defaultValue="") @Size(max=64) String interfaceId){
+        Instant asOf=Instant.now();
+        if(!interfaceId.isEmpty()){
+            if(deviceId.isEmpty()||!cursor.isEmpty())throw new IllegalArgumentException("An interface selection requires a device and no cursor");
+            return inventory.device(user.organizationId(),deviceId).switchIfEmpty(Mono.error(ApiException.missing())).flatMap(d->{
+                String needle=q.trim().toLowerCase(Locale.ROOT);
+                return inventory.interfaces(user.organizationId(),deviceId).filter(i->i.id().equals(interfaceId))
+                    .filter(i->siteId.isEmpty()||siteId.equals(d.siteId()))
+                    .filter(i->needle.isEmpty()||i.name().toLowerCase(Locale.ROOT).startsWith(needle)||d.name().toLowerCase(Locale.ROOT).startsWith(needle)||d.managementAddress().toLowerCase(Locale.ROOT).startsWith(needle))
+                    .map(i->new WorkspaceInterface(i.id(),i.deviceId(),d.name(),d.siteId(),d.siteName(),i.name(),i.macAddress(),i.speedBps(),i.adminStatus(),i.operStatus(),d.lastSeen(),ProjectionPolicy.freshness(d.lastSeen(),asOf)))
+                    .collectList().map(rows->new Page<>(rows,null,asOf,source(),mode));
+            });
+        }
+        return workspace.interfaces(user.organizationId(),limit+1,cursor,q.trim(),siteId,deviceId,asOf).collectList()
             .map(list->new Page<>(list.stream().limit(limit).toList(),list.size()>limit?InterfaceCursor.encode(list.get(limit-1),InterfaceCursor.scope(user.organizationId(),q.trim(),siteId,deviceId)):null,asOf,source(),mode));
     }
     @GetMapping("/overview") public Mono<WorkspaceOverview> overview(@AuthenticationPrincipal Operator user,@RequestParam(defaultValue="") @Size(max=64) String siteId){
         Instant asOf=Instant.now();String org=user.organizationId();
-        Mono<HistoryResult> history=siteId.isEmpty()?history(org,asOf.minus(Duration.ofDays(7)),asOf,5):Mono.just(new HistoryResult(List.of(),"NOT_REQUESTED"));
+        Mono<HistoryResult> history=siteId.isEmpty()?actionableHistory(org,asOf.minus(Duration.ofDays(7)),asOf,5):Mono.just(new HistoryResult(List.of(),"NOT_REQUESTED"));
         return Mono.zip(workspace.totals(org,siteId,asOf),workspace.siteHealth(org,siteId,asOf).collectList(),workspace.priorityDevices(org,siteId,10).collectList(),history,workspace.trafficSource(org,siteId,asOf).map(Optional::of).defaultIfEmpty(Optional.empty()))
             .map(t->new WorkspaceOverview(t.getT1(),t.getT2(),t.getT3(),t.getT5().orElse(null),t.getT4().items(),t.getT4().status(),asOf,mode,flags(t.getT4())));
     }
@@ -54,6 +67,8 @@ public class WorkspaceController {
             .filter(d->!mode.equals("DEMO")||d.name().toLowerCase(Locale.ROOT).startsWith(needle)||d.managementAddress().toLowerCase(Locale.ROOT).startsWith(needle)).take(limit).collectList(),history(user.organizationId(),from,asOf,100))
             .map(t->new WorkspaceSearch(t.getT1(),t.getT2().items().stream().filter(e->(Objects.toString(e.message(),"")+" "+e.kind()+" "+e.deviceId()).toLowerCase(Locale.ROOT).contains(needle)).limit(limit).toList(),query,100,from,asOf,"RECENT_7_DAYS_MAX_100",t.getT2().status(),asOf,mode,flags(t.getT2())));
     }
+    private Mono<HistoryResult> actionableHistory(String org,Instant from,Instant to,int limit){return inventory.actionableEvents(org,from,to,limit).collectList().map(items->new HistoryResult(items,"AVAILABLE"))
+        .onErrorResume(ApiException.class,e->e.status.is5xxServerError()?Mono.just(new HistoryResult(List.of(),"UNAVAILABLE")):Mono.error(e));}
     private Mono<HistoryResult> history(String org,Instant from,Instant to,int limit){return inventory.events(org,"",from,to,"",limit).collectList().map(items->new HistoryResult(items,"AVAILABLE"))
         .onErrorResume(ApiException.class,e->e.status.is5xxServerError()?Mono.just(new HistoryResult(List.of(),"UNAVAILABLE")):Mono.error(e));}
     private List<String> flags(HistoryResult history){var flags=new ArrayList<String>();if(mode.equals("DEMO"))flags.add("SYNTHETIC_DATA");if(history.status().equals("UNAVAILABLE"))flags.add("HISTORY_UNAVAILABLE");return List.copyOf(flags);}

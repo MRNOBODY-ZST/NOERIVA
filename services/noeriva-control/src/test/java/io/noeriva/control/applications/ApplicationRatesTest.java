@@ -5,6 +5,12 @@ import java.util.*;
 import static io.noeriva.control.applications.ApplicationModels.*;
 import static org.assertj.core.api.Assertions.*;
 class ApplicationRatesTest {
+    @Test void persistsExactIntervalBytesWithoutReusingLifetimeCounter()throws Exception{
+        var row=derive(sample(60,"18446744073709551000","700","10","http"),sample(0,"18446744073709550000","100","10","http"),1,1).getFirst();
+        var tree=tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(row);
+        assertThat(tree.hasNonNull("intervalBytes")).isTrue();
+        assertThat(tree.get("intervalBytes").asString()).isEqualTo("1000");
+    }
     Sample sample(long seconds,String bytes,String packets,String enable,String name){return new Sample(Instant.parse("2026-09-07T00:00:00Z").plusSeconds(seconds),Long.toString(10000+seconds*100),"engine","2",List.of(new CounterRow(7,"Te0/1/0","Te0/1/0/mac",42,name,enable,bytes,bytes,packets,packets,123000d,500d,List.of())),List.of());}
     @SuppressWarnings("unchecked") List<Observation> derive(Sample next,Sample old,long rev,long oldRev)throws Exception{return (List<Observation>)Class.forName("io.noeriva.control.applications.ApplicationRates").getDeclaredMethod("derive",String.class,String.class,Sample.class,Sample.class,long.class,long.class,int.class).invoke(null,"device","sample",next,old,rev,oldRev,60);}
     @Test void exactUnsignedDeltaStaysSeparateFromReportedRate()throws Exception{var r=derive(sample(60,"18446744073709551000","700","10","http"),sample(0,"18446744073709550000","100","10","http"),1,1);assertThat(r).hasSize(2);assertThat(r.getFirst().derivedBps()).isCloseTo(1000d*8/60,within(0.000001));assertThat(r.getFirst().derivedPacketsPerSecond()).isEqualTo(10);assertThat(r.getFirst().reportedBps()).isEqualTo(123000);}

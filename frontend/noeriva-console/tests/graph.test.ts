@@ -2,13 +2,8 @@ import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import { createPinia } from "pinia";
 import { createRouter, createMemoryHistory } from "vue-router";
-import { init, use, setPlatformAPI } from "echarts/core";
-import { GraphChart } from "echarts/charts";
-import { TooltipComponent } from "echarts/components";
-import { SVGRenderer } from "echarts/renderers";
 import { describe, expect, it, vi } from "vitest";
 import GraphPanel from "../src/components/GraphPanel.vue";
-import ChartCanvas from "../src/components/ChartCanvas.vue";
 import type { Topology } from "../src/services/types";
 import {
   topologyEdgeLabel,
@@ -18,12 +13,10 @@ import {
   topologyNodeState,
 } from "../src/utils/topology";
 
-use([GraphChart, TooltipComponent, SVGRenderer]);
-setPlatformAPI({ measureText: (text) => ({ width: String(text).length * 7 }) });
 vi.stubGlobal("matchMedia", () => ({ matches: true }));
-
 const topology: Topology = {
   asOf: "2026-09-06T00:00:00Z",
+  qualityFlags: [],
   nodes: [
     { id: "r1", name: "core-router", type: "ROUTER", health: "HEALTHY" },
     { id: "s1", name: "edge-switch", type: "SWITCH", health: "WARNING" },
@@ -31,140 +24,24 @@ const topology: Topology = {
     { id: "h1", name: "failed-host", type: "HOST", health: "CRITICAL" },
   ],
   edges: [],
-  qualityFlags: [],
 };
-
-describe("native graph symbols", () => {
-  it("renders observed port labels and distinct parallel curves instead of internal edge UUIDs", () => {
-    const edges = [
-      {
-        id: "observed-b74c7604-7740-4be1-910a-ff471b19d812",
-        source: "r1",
-        target: "s1",
-        sourceInterface: "Te0/3/0",
-        targetInterface: "Te1/5/1",
-        kind: "PHYSICAL",
-        provenance: "LLDP",
-        observedAt: topology.asOf,
-      },
-      {
-        id: "observed-a74c7604-7740-4be1-910a-ff471b19d812",
-        source: "r1",
-        target: "s1",
-        sourceInterface: "Te0/3/1",
-        targetInterface: "Te1/5/2",
-        kind: "PHYSICAL",
-        provenance: "CDP",
-        observedAt: topology.asOf,
-      },
-    ];
-    const wrapper = mount(GraphPanel, {
-      props: { topology: { ...topology, edges } },
-      global: {
-        plugins: [
-          createPinia(),
-          createRouter({
-            history: createMemoryHistory(),
-            routes: [{ path: "/", component: { template: "<div/>" } }],
-          }),
-        ],
-        stubs: { ChartCanvas: true },
-      },
-    });
-    const chart = init(null, undefined, {
-      renderer: "svg",
-      ssr: true,
-      width: 800,
-      height: 460,
-    });
-    try {
-      const option = wrapper.findComponent(ChartCanvas).props("option") as any;
-      const curves = option.series[0].links.map(
-        (edge: any) => edge.lineStyle.curveness,
-      );
-      expect(curves).toEqual([-0.18, 0.18]);
-      chart.setOption(option);
-      const svg = chart.renderToSVGString();
-      expect(svg).toContain("Te0/3/0 ↔ Te1/5/1");
-      expect(svg).toContain("Te0/3/1 ↔ Te1/5/2");
-      expect(svg).not.toContain("observed-");
-      expect(
-        topologyLinks([...edges].reverse()).find(
-          (edge) => edge.id === edges[0]!.id,
-        )?.lineStyle.curveness,
-      ).toBe(-0.18);
-      const reverse = { ...edges[1]!, source: "s1", target: "r1" };
-      const reversedLinks = topologyLinks([edges[0]!, reverse]);
-      expect(reversedLinks[0]!.lineStyle.curveness).toBe(
-        reversedLinks[1]!.lineStyle.curveness,
-      );
-    } finally {
-      chart.dispose();
-      wrapper.unmount();
-    }
+function render(snapshot: Topology) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: "/:pathMatch(.*)*", component: { template: "<div/>" } }],
   });
-  it("uses a readable relationship when endpoint identity is absent or an internal ID", () => {
-    expect(
-      topologyEdgeLabel({
-        sourceInterface: "b74c7604-7740-4be1-910a-ff471b19d812",
-        targetInterface: "observed-a74c",
-        kind: "PHYSICAL",
-      }),
-    ).toBe("物理连接");
-    expect(
-      topologyEdgeLabel({ sourceInterface: "Te0/3/0", targetInterface: "NA" }),
-    ).toBe("Te0/3/0 ↔ 对端口未知");
-  });
-  it.each([false, true])(
-    "renders vector glyphs and state labels without image decoding (dark=%s)",
-    (dark) => {
-      localStorage.setItem("noeriva-theme", dark ? "dark" : "light");
-      const wrapper = mount(GraphPanel, {
-        props: { topology },
-        global: {
-          plugins: [
-            createPinia(),
-            createRouter({
-              history: createMemoryHistory(),
-              routes: [{ path: "/", component: { template: "<div />" } }],
-            }),
-          ],
-          stubs: { ChartCanvas: true },
-        },
-      });
-      const chart = init(null, undefined, {
-        renderer: "svg",
-        ssr: true,
-        width: 800,
-        height: 460,
-      });
-      try {
-        chart.setOption(wrapper.findComponent(ChartCanvas).props("option"));
-        const svg = chart.renderToSVGString();
-        expect(svg).not.toContain("<image");
-        expect(svg).toContain("core-router");
-        expect(svg).toContain("警告");
-        expect(svg).toContain("未知");
-        for (const node of topology.nodes)
-          expect(svg).toContain(`fill="${topologyNodeColor(node, dark)}"`);
-        const option = wrapper
-          .findComponent(ChartCanvas)
-          .props("option") as any;
-        expect(
-          option.series[0].data.every(
-            (node: any) => node.itemStyle.borderWidth === 0,
-          ),
-        ).toBe(true);
-      } finally {
-        chart.dispose();
-        wrapper.unmount();
-        localStorage.clear();
-      }
+  const wrapper = mount(GraphPanel, {
+    props: { topology: snapshot },
+    global: {
+      plugins: [createPinia(), router],
+      stubs: { TopologyCanvas: true, ChartCanvas: true },
     },
-  );
-});
-
-describe("evidence-aware topology controls", () => {
+  });
+  const canvas = () => wrapper.findComponent({ name: "TopologyCanvas" });
+  const graph = () => canvas().props("graph") as Topology;
+  return { wrapper, router, canvas, graph };
+}
+describe("topology graph controls", () => {
   const snapshot: Topology = {
     ...topology,
     nodes: [
@@ -239,52 +116,27 @@ describe("evidence-aware topology controls", () => {
       },
     ],
   };
-  function render() {
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [{ path: "/:pathMatch(.*)*", component: { template: "<div/>" } }],
-    });
-    const wrapper = mount(GraphPanel, {
-      props: { topology: snapshot },
-      global: {
-        plugins: [createPinia(), router],
-        stubs: { ChartCanvas: true },
-      },
-    });
-    const option = () =>
-      wrapper.findComponent(ChartCanvas).props("option") as any;
-    return { wrapper, router, option };
-  }
-  it("defaults to physical observations and dashed L2 inference; L3 can be independently enabled", async () => {
-    const { wrapper, option } = render();
+
+  it("uses a dedicated network renderer with physical observations and L2 inference by default", async () => {
+    const { wrapper, canvas, graph } = render(snapshot);
     try {
-      expect(
-        option().series[0].links.map((edge: any) => [
-          edge.id,
-          edge.lineStyle.type,
-        ]),
-      ).toEqual([
-        ["physical", "solid"],
-        ["fdb", "dashed"],
-      ]);
+      expect(canvas().exists()).toBe(true);
+      expect(graph().edges.map((edge) => edge.id)).toEqual(["physical", "fdb"]);
       const switches = wrapper.findAll('input[type="checkbox"]');
       await switches[1]!.setValue(true);
-      expect(option().series[0].links.map((edge: any) => edge.id)).toEqual([
+      expect(graph().edges.map((edge) => edge.id)).toEqual([
         "physical",
         "fdb",
         "arp",
       ]);
       await switches[0]!.setValue(false);
-      expect(option().series[0].links.map((edge: any) => edge.id)).toEqual([
-        "physical",
-        "arp",
-      ]);
-      expect(option().series[0].data).toHaveLength(4); // Unsupported physical edges are never invented for isolated discovered nodes.
+      expect(graph().edges.map((edge) => edge.id)).toEqual(["physical", "arp"]);
+      expect(graph().nodes).toHaveLength(4);
     } finally {
       wrapper.unmount();
     }
   });
-  it("groups shared VLAN members without inventing edges or assigning unknown links to a VLAN", async () => {
+  it("filters VLAN evidence without inventing physical connections", async () => {
     expect(
       filterTopology(snapshot, true, true, "10").edges.map((edge) => edge.id),
     ).toEqual(["fdb"]);
@@ -296,7 +148,7 @@ describe("evidence-aware topology controls", () => {
         (edge) => edge.id,
       ),
     ).toEqual(["physical"]);
-    const { wrapper, option } = render();
+    const { wrapper, graph } = render(snapshot);
     try {
       await wrapper
         .findAll("button")
@@ -306,38 +158,36 @@ describe("evidence-aware topology controls", () => {
         .findAll("button")
         .find((button) => button.text().startsWith("VLAN 10"))!
         .trigger("click");
-      expect(option().series[0].links.map((edge: any) => edge.id)).toEqual([
-        "fdb",
-      ]);
-      expect(option().series[0].data.map((node: any) => node.id)).toContain(
-        "r1",
-      );
+      expect(graph().edges.map((edge) => edge.id)).toEqual(["fdb"]);
+      expect(graph().nodes.map((node) => node.id)).toContain("r1");
       await wrapper
         .findAll("button")
         .find((button) => button.text() === "全部分组")!
         .trigger("click");
-      expect(option().series[0].links).toHaveLength(2);
+      expect(graph().edges).toHaveLength(2);
     } finally {
       wrapper.unmount();
     }
   });
-  it("provides keyboard edge evidence and does not navigate discovered nodes to nonexistent device pages", async () => {
-    const { wrapper, router } = render();
+  it("keeps list evidence accessible and only opens registered devices", async () => {
+    const { wrapper, canvas, router } = render(snapshot);
     const navigate = vi.spyOn(router, "push");
     try {
-      wrapper
-        .findComponent(ChartCanvas)
-        .vm.$emit("open", { dataType: "node", data: { id: "terminal" } });
+      canvas().vm.$emit("open", { dataType: "node", data: { id: "terminal" } });
       await nextTick();
       expect(navigate).not.toHaveBeenCalled();
       expect(wrapper.get(".graph-inspector").text()).toContain("尚未登记");
       expect(wrapper.get(".graph-inspector").find("a").exists()).toBe(false);
+      canvas().vm.$emit("open", { dataType: "node", data: { id: "r1" } });
+      await nextTick();
+      expect(navigate).toHaveBeenCalledWith("/devices/r1");
       await wrapper
         .findAll("button")
         .find((button) => button.text() === "列表替代")!
         .trigger("click");
       await wrapper
-        .get(".graph-list .graph-edge-button:nth-of-type(6)")
+        .findAll(".graph-list .graph-edge-button")
+        .find((button) => button.text().includes("Gi1"))!
         .trigger("click");
       expect(wrapper.get(".graph-inspector").text()).toContain("二层接入推断");
       expect(wrapper.get(".graph-inspector").text()).toContain(
@@ -351,27 +201,43 @@ describe("evidence-aware topology controls", () => {
       wrapper.unmount();
     }
   });
-  it("keeps force physics enabled by default and removes the force engine in static mode", async () => {
+  it("freezes the current force layout without switching to a circular layout", async () => {
     vi.stubGlobal("matchMedia", () => ({ matches: false }));
-    const { wrapper, option } = render();
+    const { wrapper, canvas } = render(snapshot);
     try {
-      expect(option().series[0].layout).toBe("force");
-      expect(option().series[0].force.layoutAnimation).toBe(true);
+      expect(canvas().props("physics")).toBe(true);
       await wrapper
         .findAll("button")
-        .find((button) => button.text() === "圆形排列")!
+        .find((button) => button.text() === "固定布局")!
         .trigger("click");
-      expect(option().series[0].force.layoutAnimation).toBe(false);
-      expect(option().series[0].layout).toBe("circular");
-      expect(option().series[0].data.every((node: any) => node.fixed)).toBe(
-        true,
-      );
+      expect(canvas().props("physics")).toBe(false);
+      expect(wrapper.text()).toContain("可自由拖拽节点");
+      expect(wrapper.text()).not.toContain("圆形布局");
     } finally {
       wrapper.unmount();
       vi.stubGlobal("matchMedia", () => ({ matches: true }));
     }
   });
-  it("does not color a stale or unregistered last-known healthy node green", () => {
+  it("does not update the canvas data when only observation timestamps change", async () => {
+    const { wrapper, graph } = render(snapshot);
+    try {
+      const original = graph();
+      await wrapper.setProps({
+        topology: {
+          ...snapshot,
+          asOf: "2026-09-21T00:00:00Z",
+          edges: snapshot.edges.map((edge) => ({
+            ...edge,
+            observedAt: "2026-09-21T00:00:00Z",
+          })),
+        },
+      });
+      expect(graph()).toBe(original);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+  it("does not color stale or unregistered last-known healthy nodes green", () => {
     const node = {
       ...topology.nodes[0]!,
       health: "HEALTHY",
@@ -388,9 +254,29 @@ describe("evidence-aware topology controls", () => {
       "OFFLINE",
     );
   });
+  it("keeps parallel port observations distinct and hides opaque endpoint IDs", () => {
+    const first = { ...snapshot.edges[0]!, id: "a", sourceInterface: "Te1" };
+    const second = { ...first, id: "b", sourceInterface: "Te2" };
+    expect(
+      topologyLinks([first, second]).map((edge) => edge.lineStyle.curveness),
+    ).toEqual([-0.18, 0.18]);
+    expect(
+      topologyLinks([second, first]).find((edge) => edge.id === "a")?.lineStyle
+        .curveness,
+    ).toBe(-0.18);
+    expect(
+      topologyEdgeLabel({
+        sourceInterface: "b74c7604-7740-4be1-910a-ff471b19d812",
+        targetInterface: "observed-a74c",
+        kind: "PHYSICAL",
+      }),
+    ).toBe("物理连接");
+    expect(
+      topologyEdgeLabel({ sourceInterface: "Te0/3/0", targetInterface: "NA" }),
+    ).toBe("Te0/3/0 ↔ 对端口未知");
+  });
 });
-
-describe("dense graph label readability", () => {
+describe("dense graph labels", () => {
   const dense: Topology = {
     ...topology,
     nodes: [
@@ -416,126 +302,44 @@ describe("dense graph label readability", () => {
       observedAt: topology.asOf,
     })),
   };
-  function render(snapshot = dense) {
-    const wrapper = mount(GraphPanel, {
-      props: { topology: snapshot },
-      global: {
-        plugins: [
-          createPinia(),
-          createRouter({
-            history: createMemoryHistory(),
-            routes: [
-              { path: "/:pathMatch(.*)*", component: { template: "<div/>" } },
-            ],
-          }),
-        ],
-        stubs: { ChartCanvas: true },
-      },
-    });
-    return {
-      wrapper,
-      option: () => wrapper.findComponent(ChartCanvas).props("option") as any,
-    };
-  }
-  it("hides dense permanent terminal/port labels in real SVG without dropping graph data or tooltip details", () => {
-    const { wrapper, option } = render();
-    const chart = init(null, undefined, {
-      renderer: "svg",
-      ssr: true,
-      width: 1000,
-      height: 460,
-    });
+
+  it("compacts graphs above 20 nodes and forwards selection for visible names and evidence", async () => {
+    const { wrapper, canvas } = render(dense);
     try {
-      const current = option();
-      expect(current.series[0].data).toHaveLength(22);
-      expect(current.series[0].links).toHaveLength(20);
-      expect(
-        current.series[0].data
-          .filter((node: any) => node.label.show)
-          .map((node: any) => node.id),
-      ).toEqual(["r1", "s1"]);
-      expect(
-        current.series[0].links.every((edge: any) => !edge.label.show),
-      ).toBe(true);
-      expect(current.series[0].labelLayout.hideOverlap).toBe(true);
-      chart.setOption(current);
-      const svg = chart.renderToSVGString();
-      expect(svg).not.toContain("discovered-terminal-");
-      expect(svg).not.toContain("Gi1/0/");
-      expect(
-        current.tooltip.formatter({ dataType: "node", data: dense.nodes[2] }),
-      ).toContain("discovered-terminal-0");
-      expect(
-        current.tooltip.formatter({ dataType: "edge", data: dense.edges[0] }),
-      ).toContain("Gi1/0/1");
-      expect(wrapper.text()).toContain("已精简标签");
-    } finally {
-      chart.dispose();
-      wrapper.unmount();
-    }
-  });
-  it("reveals a selected node or edge and offers an explicit complete-label mode", async () => {
-    const { wrapper, option } = render();
-    try {
-      wrapper
-        .findComponent(ChartCanvas)
-        .vm.$emit("select", { dataType: "node", data: { id: "terminal-0" } });
+      expect(canvas().props("compact")).toBe(true);
+      canvas().vm.$emit("select", {
+        dataType: "node",
+        data: { id: "terminal-0" },
+      });
       await nextTick();
-      expect(
-        option().series[0].data.find((node: any) => node.id === "terminal-0")
-          .label.show,
-      ).toBe(true);
+      expect(canvas().props("selectedId")).toBe("terminal-0");
       expect(wrapper.get(".graph-inspector").text()).toContain(
         "discovered-terminal-0",
       );
-      wrapper
-        .findComponent(ChartCanvas)
-        .vm.$emit("select", { dataType: "edge", data: { id: "fdb-1" } });
+      canvas().vm.$emit("select", { dataType: "edge", data: { id: "fdb-1" } });
       await nextTick();
-      expect(
-        option().series[0].links.find((edge: any) => edge.id === "fdb-1").label
-          .show,
-      ).toBe(true);
-      expect(
-        option().series[0].data.find((node: any) => node.id === "terminal-1")
-          .label.show,
-      ).toBe(true);
+      expect(canvas().props("selectedEdgeId")).toBe("fdb-1");
       expect(wrapper.get(".graph-inspector").text()).toContain("Gi1/0/2");
       await wrapper.get('select[aria-label="拓扑标签"]').setValue("FULL");
-      expect(
-        option().series[0].data.every((node: any) => node.label.show),
-      ).toBe(true);
-      expect(
-        option().series[0].links.every((edge: any) => edge.label.show),
-      ).toBe(true);
-      expect(option().series[0].data).toHaveLength(22);
-      expect(option().series[0].links).toHaveLength(20);
+      expect(canvas().props("compact")).toBe(false);
     } finally {
       wrapper.unmount();
     }
   });
-  it("keeps up to 20 nodes fully labeled by default and automatically compacts a larger scope", async () => {
-    const { wrapper, option } = render({
+  it("keeps smaller scopes labeled and preserves the explicit compact preference", async () => {
+    const small = {
       ...dense,
       nodes: dense.nodes.slice(0, 20),
       edges: dense.edges.slice(0, 18),
-    });
+    };
+    const { wrapper, canvas } = render(small);
     try {
-      expect(option().series[0].edgeLabel.show).toBe(true);
-      expect(
-        option().series[0].data.every((node: any) => node.label.show),
-      ).toBe(true);
+      expect(canvas().props("compact")).toBe(false);
       await wrapper.setProps({ topology: dense });
-      expect(option().series[0].edgeLabel.show).toBe(false);
+      expect(canvas().props("compact")).toBe(true);
       await wrapper.get('select[aria-label="拓扑标签"]').setValue("COMPACT");
-      await wrapper.setProps({
-        topology: {
-          ...dense,
-          nodes: dense.nodes.slice(0, 20),
-          edges: dense.edges.slice(0, 18),
-        },
-      });
-      expect(option().series[0].edgeLabel.show).toBe(false);
+      await wrapper.setProps({ topology: small });
+      expect(canvas().props("compact")).toBe(true);
     } finally {
       wrapper.unmount();
     }

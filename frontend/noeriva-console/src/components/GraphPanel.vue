@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   Maximize2,
@@ -10,13 +10,11 @@ import {
   Plus,
   Minus,
 } from "@lucide/vue";
-import type { EChartsCoreOption } from "echarts/core";
 import type { Topology, TopologyNode, TopologyEdge } from "../services/types";
 import { usePreferencesStore } from "../stores/preferences";
 import { formatTime, stateLabel } from "../utils/format";
 import {
   topologyEdgeLabel,
-  topologyLinks,
   topologyNodeColor,
   topologyNodeState,
   topologyRelationLabel,
@@ -25,7 +23,7 @@ import {
   isInferred,
   confidenceLabel,
 } from "../utils/topology";
-import ChartCanvas from "./ChartCanvas.vue";
+import TopologyCanvas from "./TopologyCanvas.vue";
 import StatusBadge from "./StatusBadge.vue";
 import TopologyEvidenceList from "./TopologyEvidenceList.vue";
 const props = defineProps<{ topology: Topology }>();
@@ -40,12 +38,10 @@ const list = ref(false),
   grouped = ref(false),
   vlan = ref("");
 const labelMode = ref("AUTO");
-const chart = ref<InstanceType<typeof ChartCanvas>>();
+const chart = ref<InstanceType<typeof TopologyCanvas>>();
 const fitStatus = ref("idle");
-async function togglePhysics() {
+function togglePhysics() {
   physics.value = !physics.value;
-  await nextTick();
-  if (!physics.value) await chart.value?.fit?.();
 }
 const reducedMotion = computed(
   () =>
@@ -66,11 +62,6 @@ const compactLabels = computed(
     labelMode.value === "COMPACT" ||
     (labelMode.value === "AUTO" && visible.value.nodes.length > 20),
 );
-const nodeColors = computed(() => [
-  ...new Set(
-    visible.value.nodes.map((node) => topologyNodeColor(node, prefs.dark)),
-  ),
-]);
 const selected = computed(() =>
   visible.value.nodes.find((node) => node.id === selectedId.value),
 );
@@ -127,48 +118,6 @@ const graphSignature = computed(() =>
   }),
 );
 const graphData = computed(() => JSON.parse(graphSignature.value) as Topology);
-const shapeTypes = [
-  { type: "ROUTER", label: "路由器", symbol: "circle", points: "" },
-  {
-    type: "SWITCH",
-    label: "交换机",
-    symbol: "path://M32 0L62 23L51 59H13L2 23Z",
-    points: "16,0 31,11.5 25.5,29.5 6.5,29.5 1,11.5",
-  },
-  {
-    type: "BMC",
-    label: "带外管理",
-    symbol: "triangle",
-    points: "16,1 31,29 1,29",
-  },
-  {
-    type: "HOST",
-    label: "主机 / 终端",
-    symbol: "rect",
-    points: "1,1 31,1 31,31 1,31",
-  },
-  {
-    type: "FIREWALL",
-    label: "防火墙",
-    symbol: "diamond",
-    points: "16,0 32,16 16,32 0,16",
-  },
-  {
-    type: "UNKNOWN",
-    label: "未分类终端",
-    symbol: "roundRect",
-    points: "1,1 31,1 31,31 1,31",
-  },
-];
-const nodeShape = (type: string) =>
-  shapeTypes.find((shape) => shape.type === type) || shapeTypes[5]!;
-const legendTypes = computed(() =>
-  shapeTypes.filter((shape) =>
-    visible.value.nodes.some(
-      (node) => nodeShape(node.type).type === shape.type,
-    ),
-  ),
-);
 const colorLegend = computed(() =>
   [
     { state: "CRITICAL", label: "严重 / 离线" },
@@ -183,103 +132,6 @@ const colorLegend = computed(() =>
     ),
   })),
 );
-const option = computed<EChartsCoreOption>(() => ({
-  animation: false,
-  tooltip: {
-    trigger: "item",
-    hideDelay: 0,
-    renderMode: "richText",
-    backgroundColor: prefs.dark ? "#1b2938" : "#fff",
-    borderColor: prefs.dark ? "#667d98" : "#8091a5",
-    textStyle: { color: prefs.dark ? "#e4edf7" : "#172538" },
-    formatter: (value: unknown) => {
-      const item = value as {
-        dataType: string;
-        data: TopologyNode & TopologyEdge;
-      };
-      return item.dataType === "node"
-        ? `${item.data.name}\n${item.data.registered === false ? "已发现 · 尚未登记" : stateLabel(topologyNodeState(item.data))}`
-        : `${topologyEdgeLabel(item.data)}\n${topologyRelationLabel(item.data)}${isInferred(item.data) ? " · 非物理直连证明" : ""}`;
-    },
-  },
-  series: [
-    {
-      type: "graph",
-      layout: reducedMotion.value || !physics.value ? "circular" : "force",
-      roam: true,
-      draggable: true,
-      force: {
-        repulsion: 700,
-        gravity: 0.06,
-        edgeLength: [120, 200],
-        layoutAnimation: physics.value && !reducedMotion.value,
-      },
-      scaleLimit: { min: 0.05, max: 3 },
-      symbolSize: 44,
-      label: {
-        show: true,
-        position: "bottom",
-        color: prefs.dark ? "#c8d5e5" : "#33485e",
-        fontSize: 12,
-        distance: 9,
-      },
-      labelLayout: { hideOverlap: compactLabels.value },
-      lineStyle: {
-        color: prefs.dark ? "#8598af" : "#74879b",
-        opacity: 1,
-        width: 1.5,
-        curveness: 0,
-      },
-      edgeLabel: {
-        show: !compactLabels.value,
-        fontSize: 10,
-        color: prefs.dark ? "#b0bfd0" : "#536579",
-        formatter: (value: unknown) =>
-          topologyEdgeLabel((value as { data: TopologyEdge }).data),
-      },
-      emphasis: {
-        focus: compactLabels.value ? "self" : "adjacency",
-        label: { show: true },
-        edgeLabel: { show: true },
-        lineStyle: { width: 3 },
-        itemStyle: { borderWidth: 0 },
-      },
-      data: graphData.value.nodes.map((node) => ({
-        ...node,
-        fixed: !physics.value,
-        symbol: nodeShape(node.type).symbol,
-        symbolKeepAspect: true,
-        label: {
-          show:
-            !compactLabels.value ||
-            node.registered !== false ||
-            node.id === selectedId.value ||
-            node.id === selectedEdge.value?.source ||
-            node.id === selectedEdge.value?.target,
-          formatter: `${node.name}\n{state|${node.registered === false ? "发现终端 · 尚未登记" : `${stateLabel(node.type)} · ${stateLabel(topologyNodeState(node))}`}}`,
-          rich: {
-            state: {
-              fontSize: 11,
-              color: prefs.dark ? "#a1b2c5" : "#607187",
-              lineHeight: 20,
-            },
-          },
-        },
-        itemStyle: {
-          color: topologyNodeColor(node, prefs.dark),
-          borderWidth: 0,
-        },
-        symbolSize: node.type === "ROUTER" ? 48 : 44,
-      })),
-      links: topologyLinks(graphData.value.edges).map((edge) => ({
-        ...edge,
-        label: {
-          show: !compactLabels.value || edge.id === selectedEdgeId.value,
-        },
-      })),
-    },
-  ],
-}));
 </script>
 <template>
   <div class="graph-toolbar">
@@ -297,12 +149,12 @@ const option = computed<EChartsCoreOption>(() => ({
           reducedMotion
             ? '已遵循减少动态效果偏好，使用静态布局'
             : physics
-              ? '切换到静态圆形布局，停止物理模拟'
+              ? '固定当前位置，停止物理模拟'
               : '启用力导向布局'
         "
         @click="togglePhysics"
       >
-        {{ reducedMotion ? "静态布局" : physics ? "圆形排列" : "启用物理" }}
+        {{ reducedMotion ? "静态布局" : physics ? "固定布局" : "启用物理" }}
       </button>
       <button
         class="icon-btn"
@@ -381,12 +233,7 @@ const option = computed<EChartsCoreOption>(() => ({
     </p>
   </div>
   <div class="graph-legend" aria-label="拓扑图例">
-    <span v-for="shape in legendTypes" :key="shape.type"
-      ><svg viewBox="0 0 32 32" width="17" height="17" aria-hidden="true">
-        <circle v-if="shape.symbol === 'circle'" cx="16" cy="16" r="14" />
-        <polygon v-else :points="shape.points" /></svg
-      >{{ shape.label }}</span
-    >
+    <span>节点表示设备 · 颜色表示状态</span>
     <span v-for="item in colorLegend" :key="item.state"
       ><i
         class="graph-color-dot"
@@ -411,7 +258,7 @@ const option = computed<EChartsCoreOption>(() => ({
     当前范围没有符合筛选的连线；保留已知节点，不补造连接。
   </p>
   <p v-if="(!physics || reducedMotion) && !list" class="graph-scope-note">
-    当前使用静态圆形布局；拖拽可沿圆环调整节点，停止物理模拟。
+    当前布局已固定；可自由拖拽节点，物理模拟已停止。
   </p>
   <p
     v-if="fitStatus === 'limited' && !list"
@@ -463,20 +310,24 @@ const option = computed<EChartsCoreOption>(() => ({
           当前 VLAN 分组没有节点。
         </p>
       </div>
-      <ChartCanvas
-        v-else-if="visible.nodes.length"
+      <TopologyCanvas
+        v-if="visible.nodes.length"
+        v-show="!list"
         ref="chart"
-        :option="option"
-        :graph-node-colors="nodeColors"
-        :auto-fit-graph="visible.nodes.length > 20"
-        preserve-layout
+        :graph="graphData"
+        :active="!list"
+        :dark="prefs.dark"
+        :compact="compactLabels"
+        :selected-id="selectedId"
+        :selected-edge-id="selectedEdgeId"
+        :physics="physics"
+        :reduced-motion="reducedMotion"
         label="设备连接图；实线为观测，虚线为推断。可拖拽、缩放，或使用列表替代进行键盘操作。"
-        height="460px"
         @select="select($event)"
         @open="select($event, true)"
         @fit-status="fitStatus = $event"
       />
-      <div v-else class="empty-state">
+      <div v-else-if="!list" class="empty-state">
         <strong>当前 VLAN 分组没有节点</strong>
         <p>选择其他分组查看当前快照中的设备。</p>
       </div>

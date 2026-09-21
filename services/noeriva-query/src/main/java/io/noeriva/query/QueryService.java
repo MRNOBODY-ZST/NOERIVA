@@ -48,9 +48,8 @@ public final class QueryService {
             final ZoneId zone;
             try{zone=ZoneId.of(Objects.requireNonNull(timezone));}catch(RuntimeException e){throw new IllegalArgumentException("A valid explicit IANA timezone is required");}
             Instant now=clock.instant(),from=now.atZone(zone).toLocalDate().minusDays(6).atStartOfDay(zone).toInstant();
-            int points=2000,step=step(from,now,points);
-            return metricRepository.loadMetrics(organizationId,deviceId,MetricDefinition.require("bandwidth_"+direction+"_bps"),from,now,points)
-                .publishOn(computation).map(result->new GaugeHeatmapBuilder().build(deviceId,zone,direction,now,step,result));
+            return metricRepository.loadSamples(organizationId,deviceId,MetricDefinition.require("bandwidth_"+direction+"_bps"),from,now)
+                .publishOn(computation).map(result->new GaugeHeatmapBuilder().build(deviceId,zone,direction,now,MetricAggregation.cadence(result.points()),result));
         });
     }
     public Mono<MetricResponse> metrics(String organizationId,String deviceId,String metric,Instant from,Instant to,int points) {
@@ -61,13 +60,12 @@ public final class QueryService {
             if(from==null||to==null||!from.isBefore(to)||Duration.between(from,to).compareTo(Duration.ofDays(7))>0
                     ||to.isAfter(now.plusSeconds(5))||points<2||points>2000) throw new IllegalArgumentException("Metric query requires 2–2000 points and a non-future range of at most 7 days");
             int step=step(from,to,points);
-            return metricRepository.loadMetrics(organizationId,deviceId,definition,from,to,points).publishOn(computation).map(r->{
-                if(r.points().size()>points) throw new ProviderUnavailableException(r.source(),"Provider exceeded point budget");
-                Instant asOf=r.points().stream().filter(p->p.value()!=null).map(MetricPoint::timestamp).max(Comparator.naturalOrder()).orElse(null);
-                long expected=Duration.between(from,to).getSeconds()/step+1;
-                long observed=r.points().stream().filter(p->p.value()!=null).count();
+            return metricRepository.loadSamples(organizationId,deviceId,definition,from,to).publishOn(computation).map(r->{
+                var aggregate=MetricAggregation.aggregate(r.points(),from,to,step,definition.unit().equals("bps"));
+                Instant asOf=r.points().stream().filter(p->MetricAggregation.validSample(p,definition.unit().equals("bps"))).map(MetricPoint::timestamp).max(Comparator.naturalOrder()).orElse(null);
+                var flags=new TreeSet<>(r.qualityFlags());flags.addAll(aggregate.flags());
                 return new MetricResponse(deviceId,metric,definition.unit(),from,to,asOf,r.source(),HeatmapBuilder.freshness(asOf,now),step,
-                    r.revision(),false,Math.min(1,(double)observed/expected),r.qualityFlags(),List.copyOf(r.points()));
+                    r.revision(),false,aggregate.summary().coverage(),List.copyOf(flags),aggregate.points(),aggregate.summary());
             });
         });
     }

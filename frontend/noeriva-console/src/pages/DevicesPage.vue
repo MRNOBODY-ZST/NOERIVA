@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Server,
   ChevronRight,
+  Trash2,
 } from "@lucide/vue";
 import { request, queryString } from "../services/api";
 import { useApiQuery } from "../services/queries";
@@ -85,6 +86,30 @@ const create = useMutation({
     });
   },
 });
+const canDelete = computed(
+  () => auth.session?.roles.includes("ADMIN") ?? false,
+);
+const deleteTarget = ref<Device | null>(null);
+const remove = useMutation({
+  mutationFn: (device: Device) =>
+    request<void>(`/devices/${encodeURIComponent(device.id)}`, {
+      method: "DELETE",
+      headers: { "X-Noeriva-Request": "1" },
+    }),
+  onSuccess: async () => {
+    deleteTarget.value = null;
+    if (data.value?.items.length === 1 && cursors.value.length)
+      cursors.value.pop();
+    await client.invalidateQueries({ queryKey: ["noeriva"] });
+  },
+});
+function confirmDelete(device: Device) {
+  remove.reset();
+  deleteTarget.value = device;
+}
+function closeDelete() {
+  if (!remove.isPending.value) deleteTarget.value = null;
+}
 function openCreate() {
   form.value = {
     name: "",
@@ -254,7 +279,7 @@ function exportPage() {
               <th>站点</th>
               <th>厂商 / 型号</th>
               <th>最后观测</th>
-              <th><span class="sr-only">查看详情</span></th>
+              <th><span class="sr-only">资产操作</span></th>
             </tr>
           </thead>
           <tbody>
@@ -289,6 +314,14 @@ function exportPage() {
                   class="icon-btn"
                   ><ChevronRight aria-hidden="true" :size="16"
                 /></RouterLink>
+                <button
+                  v-if="canDelete"
+                  class="icon-btn danger-text"
+                  :aria-label="`删除 ${device.name}`"
+                  @click="confirmDelete(device)"
+                >
+                  <Trash2 aria-hidden="true" :size="15" />
+                </button>
               </td>
             </tr>
           </tbody>
@@ -413,4 +446,38 @@ function exportPage() {
       </div>
     </form></ModalDialog
   >
+  <ModalDialog :open="!!deleteTarget" title="删除资产" @close="closeDelete">
+    <form
+      class="form-body"
+      @submit.prevent="deleteTarget && remove.mutate(deleteTarget)"
+    >
+      <p>
+        确认删除 <strong>{{ deleteTarget?.name }}</strong
+        >（{{ deleteTarget?.managementAddress }}）？
+      </p>
+      <p class="notice">
+        从资产目录移除并停止后续采集，保留历史观测、事件、配置快照和证据。设备正在采集时，请等待完成后重试。
+      </p>
+      <p v-if="remove.error.value" class="danger-text" role="alert">
+        {{ remove.error.value.message }}
+      </p>
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn"
+          :disabled="remove.isPending.value"
+          @click="closeDelete"
+        >
+          取消
+        </button>
+        <button
+          class="btn danger-text"
+          data-testid="confirm-delete-device"
+          :disabled="remove.isPending.value"
+        >
+          {{ remove.isPending.value ? "正在删除…" : "确认删除" }}
+        </button>
+      </div>
+    </form>
+  </ModalDialog>
 </template>

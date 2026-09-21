@@ -33,6 +33,8 @@ public class ControlController {
     }
     private Mono<Device> required(String org,String id){return repository.device(org,id).switchIfEmpty(Mono.error(ApiException.missing()));}
     @GetMapping("/devices/{id}") public Mono<Device> device(@AuthenticationPrincipal Operator user,@PathVariable String id){return required(user.organizationId(),id);}
+    @DeleteMapping("/devices/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> delete(@AuthenticationPrincipal Operator user,@PathVariable String id){return repository.delete(user.organizationId(),user.username(),id);}
     @PostMapping("/devices") @ResponseStatus(HttpStatus.CREATED) public Mono<Device> create(@AuthenticationPrincipal Operator user,@Valid @RequestBody CreateDevice input){return repository.create(user.organizationId(),user.username(),input);}
     @GetMapping("/devices/{id}/summary") public Mono<DeviceSummary> summary(@AuthenticationPrincipal Operator user,@PathVariable String id){
         return required(user.organizationId(),id).flatMap(device->repository.sources(user.organizationId(),id).collectList()

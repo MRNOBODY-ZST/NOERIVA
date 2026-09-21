@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch, onUnmounted } from "vue";
 import { TriangleAlert, RefreshCw } from "@lucide/vue";
 import type { EChartsCoreOption } from "echarts/core";
 import { useApiQuery } from "../services/queries";
 import { queryString } from "../services/api";
 import type { Page, Alert, Site, MetricSeries } from "../services/types";
 import type { WorkspaceOverview } from "../services/workspace";
-import { formatRate, formatTime, stateLabel } from "../utils/format";
+import {
+  formatRate,
+  formatTime,
+  stateLabel,
+  formatBytes,
+} from "../utils/format";
 import { usePreferencesStore } from "../stores/preferences";
 import StatusBadge from "../components/StatusBadge.vue";
 import QueryState from "../components/QueryState.vue";
 import ChartCanvas from "../components/ChartCanvas.vue";
+import { trendPoints, bucketLabel } from "../utils/metricWindow";
 const prefs = usePreferencesStore();
 const site = ref(""),
   hours = ref("1"),
@@ -28,8 +34,16 @@ const {
 const traffic = computed(() => data.value?.trafficSource);
 const hasRx = computed(() => traffic.value?.metrics.bandwidth_rx_bps != null);
 const hasTx = computed(() => traffic.value?.metrics.bandwidth_tx_bps != null);
+watch(hours, () => {
+  rangeEnd.value = new Date().toISOString();
+});
+const rangeTimer = setInterval(() => {
+  if (document.visibilityState !== "hidden")
+    rangeEnd.value = new Date().toISOString();
+}, 20_000);
+onUnmounted(() => clearInterval(rangeTimer));
 const metricPath = (metric: string) =>
-  `/devices/${encodeURIComponent(traffic.value?.deviceId || "")}/metrics${queryString({ metric, from: new Date(new Date(rangeEnd.value).getTime() - Number(hours.value) * 3600000).toISOString(), to: rangeEnd.value, points: 90 })}`;
+  `/devices/${encodeURIComponent(traffic.value?.deviceId || "")}/metrics${queryString({ metric, from: new Date(new Date(rangeEnd.value).getTime() - Number(hours.value) * 3600000).toISOString(), to: rangeEnd.value, points: trendPoints(Number(hours.value)) })}`;
 const rx = useApiQuery<MetricSeries>(
   () => metricPath("bandwidth_rx_bps"),
   hasRx,
@@ -67,8 +81,9 @@ const trafficOption = computed<EChartsCoreOption>(() => ({
       formatter: (value: number) =>
         new Intl.DateTimeFormat("zh-CN", {
           timeZone: prefs.timezone,
-          hour: "2-digit",
-          minute: "2-digit",
+          ...(Number(hours.value) > 24
+            ? { month: "2-digit" as const, day: "2-digit" as const }
+            : { hour: "2-digit" as const, minute: "2-digit" as const }),
           hourCycle: "h23",
         }).format(value),
     },
@@ -137,11 +152,6 @@ function retryTraffic() {
         <option v-for="item in sites?.items" :key="item.id" :value="item.id">
           {{ item.name }}
         </option></select
-      ><select v-model="hours" aria-label="流量时间窗口">
-        <option value="0.25">最近 15 分钟</option>
-        <option value="1">最近 1 小时</option>
-        <option value="6">最近 6 小时</option>
-        <option value="24">最近 24 小时</option></select
       ><button class="btn" @click="refresh">
         <RefreshCw aria-hidden="true" :size="14" />刷新
       </button>
@@ -257,7 +267,16 @@ function retryTraffic() {
               </p>
               <p v-else>来自设备的带宽观测</p>
             </div>
-            <StatusBadge v-if="traffic" :status="traffic.freshness" />
+            <div class="inline-actions">
+              <select v-model="hours" aria-label="流量时间窗口">
+                <option value="0.25">最近 15 分钟</option>
+                <option value="1">最近 1 小时</option>
+                <option value="6">最近 6 小时</option>
+                <option value="24">最近 24 小时</option>
+                <option value="168">最近 7 天</option>
+              </select>
+              <StatusBadge v-if="traffic" :status="traffic.freshness" />
+            </div>
           </header>
           <div v-if="!traffic" class="empty-state">
             <strong>等待带宽观测</strong>
@@ -267,18 +286,26 @@ function retryTraffic() {
             >
           </div>
           <template v-else
-            ><div class="chart-stats">
+            ><div class="window-stats">
               <div>
-                <strong>{{
-                  formatRate(traffic.metrics.bandwidth_rx_bps)
-                }}</strong
-                ><small>入站 · 最近值</small>
+                <strong>{{ formatRate(rx.data.value?.summary?.mean) }}</strong
+                ><small>入站 · 区间平均</small>
+              </div>
+              <div>
+                <strong>{{ formatRate(tx.data.value?.summary?.mean) }}</strong
+                ><small>出站 · 区间平均</small>
               </div>
               <div>
                 <strong>{{
-                  formatRate(traffic.metrics.bandwidth_tx_bps)
+                  formatBytes(rx.data.value?.summary?.estimatedBytes)
                 }}</strong
-                ><small>出站 · 最近值</small>
+                ><small>入站 · 已观测流量估算</small>
+              </div>
+              <div>
+                <strong>{{
+                  formatBytes(tx.data.value?.summary?.estimatedBytes)
+                }}</strong
+                ><small>出站 · 已观测流量估算</small>
               </div>
             </div>
             <QueryState
@@ -292,6 +319,15 @@ function retryTraffic() {
                 :option="trafficOption"
                 :label="`${traffic.deviceName} 入站与出站带宽趋势`"
             /></QueryState>
+            <p class="chart-footnote">
+              {{
+                bucketLabel(
+                  rx.data.value?.resolution || tx.data.value?.resolution,
+                )
+              }}
+              ·
+              区间均值使用全部原始样本。流量按连续带宽观测估算，不补齐缺失时段。
+            </p>
             <div class="chart-legend">
               <span><i class="legend-line"></i>入站</span
               ><span><i class="legend-line secondary"></i>出站</span
@@ -410,7 +446,7 @@ function retryTraffic() {
             已限定站点。请从巡检资产进入设备事件，查看对应来源。
           </p>
           <p v-else-if="!data.recentEvents.length" class="small muted">
-            最近 7 天内没有事件记录。
+            最近 7 天内没有需要关注的问题事件。
           </p>
           <ol v-else class="clarity-timeline">
             <li v-for="event in data.recentEvents" :key="event.id">

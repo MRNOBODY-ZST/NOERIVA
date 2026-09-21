@@ -44,6 +44,23 @@ import static io.noeriva.control.applications.ApplicationModels.*;
             .map(body->{var values=body.lines().filter(line->!line.isBlank()).map(line->json.readValue(json.readTree(line).get("payload").asText(),Observation.class)).toList();if(values.size()>limit+1)throw unavailable();var items=List.copyOf(values.subList(0,Math.min(limit,values.size())));var last=items.isEmpty()?null:items.getLast();String next=values.size()>limit?ApplicationCursor.encode(scope,fromMillis+":"+toMillis+":"+last.observedAt().toEpochMilli()+":"+last.id()):null;return new Models.Page<>(items,next,Instant.now(),"CLICKHOUSE","CONNECTED");}),
             queryId->Mono.empty(),(queryId,error)->kill(queryId),this::kill).onErrorMap(e->e instanceof ApiException?e:unavailable());
     }
+    public Mono<WindowSummary> window(String org,String device,Integer index,String direction,String q,Instant from,Instant to,int limit,int freshnessSeconds){
+        Instant now=Instant.now(),end=to==null?now:to,start=from==null?end.minusSeconds(3600):from;
+        if(!start.isBefore(end)||Duration.between(start,end).compareTo(Duration.ofDays(7))>0||end.isAfter(now.plusSeconds(5)))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_APPLICATION_RANGE","Select a non-future time range of at most seven days");
+        int resolution=ApplicationWindow.resolution(start,end);long scanTo=Math.min(now.toEpochMilli(),end.plusSeconds(10800).toEpochMilli());
+        return Mono.usingWhen(Mono.fromSupplier(()->"noeriva-app-window-"+UUID.randomUUID()),id->client.post().uri(b->{
+            b.path("/").queryParam("query_id",id).queryParam("param_org",org).queryParam("param_device",device)
+                .queryParam("param_from",start.toEpochMilli()).queryParam("param_to",end.toEpochMilli()).queryParam("param_scanTo",scanTo).queryParam("param_step",resolution*1000L)
+                .queryParam("max_execution_time",8).queryParam("max_rows_to_read",12000000).queryParam("max_bytes_to_read",8589934592L)
+                .queryParam("max_memory_usage",536870912).queryParam("max_bytes_before_external_sort",134217728).queryParam("max_bytes_before_external_group_by",134217728).queryParam("max_temporary_data_on_disk_size_for_query",2147483648L).queryParam("max_result_rows",4097).queryParam("max_result_bytes",4194304)
+                .queryParam("max_rows_to_group_by",500000).queryParam("group_by_overflow_mode","throw").queryParam("max_threads",2)
+                .queryParam("result_overflow_mode","throw").queryParam("read_overflow_mode","throw").queryParam("timeout_overflow_mode","throw").queryParam("wait_end_of_query",1);
+            if(index!=null)b.queryParam("param_index",index);if(!direction.isEmpty())b.queryParam("param_direction",direction);if(!q.isEmpty())b.queryParam("param_q",q);return b.build();})
+            .contentType(MediaType.TEXT_PLAIN).bodyValue(ApplicationWindow.sql(index,direction,q)).retrieve().bodyToMono(String.class).defaultIfEmpty("").timeout(Duration.ofSeconds(10))
+            .map(body->ApplicationWindow.assemble(device,start,end,resolution,limit,body.lines().filter(line->!line.isBlank()).map(line->json.readValue(line,ApplicationWindow.Row.class)).toList(),now,freshnessSeconds)),
+            id->Mono.empty(),(id,error)->kill(id),this::kill).onErrorMap(e->e instanceof ApiException?e:unavailable());
+    }
     /** Read exactly the latest sampling batch; cumulative UInt64 counters never enter a rate sum. */
     public Mono<Summary> summary(String org,String device,Integer index,String direction,String q,int limit,int freshnessSeconds){
         String scope="organization_id={org:String} AND device_id={device:String}";

@@ -52,5 +52,9 @@ public final class DemoQueryRepository implements RollupRepository,MetricReposit
             return new MetricRepository.Result(List.copyOf(points),"SIMULATED",1,List.of("SIMULATED"));
         }).subscribeOn(simulator);
     }
+    @Override public Mono<MetricRepository.Result> loadSamples(String org,String device,MetricDefinition metric,Instant from,Instant to) {
+        int count=(int)Math.min(MetricAggregation.MAX_SAMPLES,Math.max(2,Duration.between(from,to).getSeconds()/30+1));
+        return loadMetrics(org,device,metric,from,to,count);
+    }
     @PreDestroy public void close() {simulator.dispose();}
 }

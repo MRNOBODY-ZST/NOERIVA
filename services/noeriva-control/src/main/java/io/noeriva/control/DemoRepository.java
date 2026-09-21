@@ -13,6 +13,7 @@ import static io.noeriva.control.Models.*;
 /** Explicit synthetic, process-local profile. Never selected as a persistence fallback. */
 @Repository @Profile("demo")
 public class DemoRepository implements ControlRepository {
+    private final Set<String> deleted=ConcurrentHashMap.newKeySet();
     private final Map<String,Device> inventory = new ConcurrentHashMap<>();
     private final Map<String,Observation> observations = new ConcurrentHashMap<>();
     private final Map<String,Alert> alerts = new ConcurrentHashMap<>();
@@ -52,13 +53,13 @@ public class DemoRepository implements ControlRepository {
     }
     private boolean authorized(String org) { return "demo".equals(org); }
     @Override public Flux<Device> devices(String org,int limit,String cursor,String q,String site,String type,String health) {
-        return Flux.defer(() -> !authorized(org)?Flux.empty():Flux.fromStream(inventory.values().stream().map(this::current).filter(d -> d.id().compareTo(cursor)>0)
+        return Flux.defer(() -> !authorized(org)?Flux.empty():Flux.fromStream(inventory.values().stream().filter(d->!deleted.contains(d.id())).map(this::current).filter(d -> d.id().compareTo(cursor)>0)
             .filter(d -> q.isEmpty() || (d.name()+" "+d.managementAddress()).toLowerCase(Locale.ROOT).contains(q.toLowerCase(Locale.ROOT)))
             .filter(d -> site.isEmpty()||site.equals(d.siteId())).filter(d -> type.isEmpty()||type.equals(d.type())).filter(d -> health.isEmpty()||health.equals(d.health()))
             .sorted(Comparator.comparing(Device::id)).limit(limit)));
     }
-    @Override public Mono<Device> device(String org,String id) { return Mono.defer(() -> authorized(org)?Mono.justOrEmpty(inventory.get(id)).map(this::current):Mono.empty()); }
-    @Override public Flux<Device> deviceBatch(String org,List<String> ids) {return authorized(org)?Flux.fromIterable(ids).mapNotNull(inventory::get).map(this::current):Flux.empty();}
+    @Override public Mono<Device> device(String org,String id) { return Mono.defer(() -> authorized(org)?Mono.justOrEmpty(inventory.get(id)).filter(d->!deleted.contains(d.id())).map(this::current):Mono.empty()); }
+    @Override public Flux<Device> deviceBatch(String org,List<String> ids) {return authorized(org)?Flux.fromIterable(ids).filter(id->!deleted.contains(id)).mapNotNull(inventory::get).map(this::current):Flux.empty();}
     @Override public Mono<Device> create(String org,String actor,CreateDevice input) {
         return Mono.fromCallable(() -> { if (!authorized(org)) throw ApiException.missing();
             var site=SITES.stream().filter(s -> s.id().equals(input.siteId())).findFirst().orElseThrow(ApiException::missing);
@@ -66,12 +67,15 @@ public class DemoRepository implements ControlRepository {
             var d=new Device(UUID.randomUUID().toString(),input.name(),input.type(),site.id(),site.name(),input.vendor(),input.model(),input.managementAddress(),"UNKNOWN","UNKNOWN",null,1,List.of("summary"));
             inventory.put(d.id(),d);return d; });
     }
+    @Override public Mono<Void> delete(String org,String actor,String id) {
+        return Mono.fromRunnable(()->{synchronized(observations){if(!authorized(org)||!inventory.containsKey(id)||!deleted.add(id))throw ApiException.missing();}});
+    }
     @Override public Flux<Site> sites(String org) { return authorized(org)?Flux.fromIterable(SITES):Flux.empty(); }
     @Override public Flux<SourceState> sources(String org,String device) { return Flux.defer(() -> authorized(org)?Flux.fromStream(observations.values().stream().filter(o -> o.deviceId().equals(device)).sorted(Comparator.comparing(Observation::sourceId)).map(o -> ProjectionPolicy.source(o,Instant.now()))):Flux.empty()); }
     @Override public Flux<NetworkInterface> interfaces(String org,String device) { return authorized(org)?Flux.fromStream(interfaces.stream().filter(i -> i.deviceId().equals(device))):Flux.empty(); }
     @Override public Mono<NetworkInterface> registerInterface(String org,String actor,String device,RegisterInterface input){return device(org,device).switchIfEmpty(Mono.error(ApiException.missing())).map(d->{var result=new NetworkInterface(UUID.randomUUID().toString(),device,input.name(),input.macAddress(),input.speedBps(),"UNKNOWN","UNKNOWN");synchronized(interfaces){interfaces.add(result);}return result;});}
     @Override public Flux<Alert> alerts(String org,String device,String state,int limit) {
-        return Flux.defer(() -> authorized(org)?Flux.fromStream(alerts.values().stream().filter(a -> device.isEmpty()||device.equals(a.deviceId())).filter(a -> state.isEmpty()||state.equals(a.state())).sorted(Comparator.comparing(Alert::openedAt).reversed()).limit(limit)):Flux.empty());
+        return Flux.defer(() -> authorized(org)?Flux.fromStream(alerts.values().stream().filter(a->!deleted.contains(a.deviceId())).filter(a -> device.isEmpty()||device.equals(a.deviceId())).filter(a -> state.isEmpty()||state.equals(a.state())).sorted(Comparator.comparing(Alert::openedAt).reversed()).limit(limit)):Flux.empty());
     }
     @Override public Mono<Alert> acknowledge(String org,String actor,String id,long revision) {
         return Mono.fromCallable(() -> { if(!authorized(org)||!alerts.containsKey(id))throw ApiException.missing();
@@ -87,12 +91,14 @@ public class DemoRepository implements ControlRepository {
     @Override public Flux<Edge> edges(String org,String device,int limit) {
         if(!authorized(org)) return Flux.empty();
         return Flux.fromIterable(List.of(new Edge("edge-1","core-asr-01","lab-sw-01","Te0/0/0","ethernet1/1/1","PHYSICAL","SIMULATED",fixtureTime),new Edge("edge-2","lab-sw-01","edge-sw-02","ethernet1/1/2","Ethernet1","PHYSICAL","SIMULATED",fixtureTime),new Edge("edge-3","lab-sw-01","compute-07","ethernet1/1/7","eno1","PHYSICAL","SIMULATED",fixtureTime),new Edge("edge-4","compute-07","bmc-compute-07",null,null,"MANAGEMENT","SIMULATED",fixtureTime)))
-            .filter(e -> device.isEmpty()||device.equals(e.source())||device.equals(e.target())).take(limit);
+            .filter(e->!deleted.contains(e.source())&&!deleted.contains(e.target())).filter(e -> device.isEmpty()||device.equals(e.source())||device.equals(e.target())).take(limit);
     }
-    @Override public Mono<Overview> overview(String org) { return devices(org,10001,"","","","","").collectList().map(list -> new Overview(list.size(),count(list,"CRITICAL"),count(list,"WARNING"),count(list,"HEALTHY"),count(list,"UNKNOWN"),list.stream().filter(d->ProjectionPolicy.freshness(d.lastSeen(),Instant.now()).equals("STALE")).count(),authorized(org)?alerts.values().stream().filter(a->!a.state().equals("RESOLVED")).count():0,authorized(org)?1:0,Instant.now(),"DEMO")); }
+    @Override public Mono<Overview> overview(String org) { return devices(org,10001,"","","","","").collectList().map(list -> new Overview(list.size(),count(list,"CRITICAL"),count(list,"WARNING"),count(list,"HEALTHY"),count(list,"UNKNOWN"),list.stream().filter(d->ProjectionPolicy.freshness(d.lastSeen(),Instant.now()).equals("STALE")).count(),authorized(org)?alerts.values().stream().filter(a->!deleted.contains(a.deviceId())&&!a.state().equals("RESOLVED")).count():0,authorized(org)?1:0,Instant.now(),"DEMO")); }
     private long count(List<Device> list,String health) {return list.stream().filter(d->d.health().equals(health)).count();}
-    @Override public Mono<Boolean> project(String org,Observation o) { return Mono.fromCallable(() -> { if(!authorized(org)||!inventory.containsKey(o.deviceId()))throw ApiException.missing();
+    @Override public Mono<Boolean> project(String org,Observation o) { return Mono.fromCallable(() -> {
         synchronized(observations) {
+            if(!authorized(org)||!inventory.containsKey(o.deviceId()))throw ApiException.missing();
+            if(deleted.contains(o.deviceId()))return false;
             var key=o.deviceId()+"/"+o.sourceId(); var previous=observations.get(key);
             if(!ProjectionPolicy.accepts(previous,o,Instant.now()))return false;
             observations.put(key,o);

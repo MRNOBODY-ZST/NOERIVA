@@ -15,4 +15,17 @@ class ApplicationSummaryTest {
   var result=ApplicationHistory.summarize("router",List.of(row(8,"tls","IN",10d),row(9,"tls","IN",null)),12,180,now.plusSeconds(500));
   assertThat(result.items().getFirst().derivedBps()).isNull();assertThat(result.items().getFirst().qualityFlags()).contains("RATE_INCOMPLETE");assertThat(result.freshness()).isEqualTo("STALE");
  }
+ @Test void windowTotalsRoundRawBoundaryContributionsOnceRatherThanSummingRoundedItems(){
+  for(String fraction:List.of("0.4","0.6")){
+   var rows=List.of(
+    new ApplicationWindow.Row("item",-1,"tls","IN",List.of(8),fraction,3d,1,1,now.toEpochMilli(),List.of("ESTIMATED_BOUNDARY")),
+    new ApplicationWindow.Row("item",-1,"http","IN",List.of(8),fraction,3d,1,1,now.toEpochMilli(),List.of("ESTIMATED_BOUNDARY")));
+   var result=ApplicationWindow.assemble("router",now.minusSeconds(1),now,60,12,rows,now,180);
+   assertThat(result.totalBytes()).isEqualTo("1");assertThat(result.inBytes()).isEqualTo("1");assertThat(result.outBytes()).isNull();
+  }
+  var directions=List.of(
+    new ApplicationWindow.Row("item",-1,"tls","IN",List.of(8),"0.4",3d,1,1,now.toEpochMilli(),List.of("ESTIMATED_BOUNDARY")),
+    new ApplicationWindow.Row("item",-1,"tls","OUT",List.of(8),"0.4",3d,1,1,now.toEpochMilli(),List.of("ESTIMATED_BOUNDARY")));
+  assertThat(ApplicationWindow.assemble("router",now.minusSeconds(1),now,60,12,directions,now,180).totalBytes()).isEqualTo("1");
+ }
 }

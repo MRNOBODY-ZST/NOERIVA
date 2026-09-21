@@ -76,6 +76,15 @@ async function render(
         observedAt: observation.observedAt,
         freshness: "FRESH",
         sampleRows: 2,
+        from: parsed.searchParams.get("from"),
+        to: parsed.searchParams.get("to"),
+        totalBytes: "1536000",
+        inBytes: "1024000",
+        outBytes: "512000",
+        meanBps: 123000,
+        coverage: 0.5,
+        resolutionSeconds: 60,
+        trend: [],
         totalApplications: 1,
         qualityFlags: [],
         items: [
@@ -84,6 +93,8 @@ async function render(
             direction: "IN",
             interfaceIndices: [8],
             derivedBps: 123000,
+            cumulativeBytes: "1024000",
+            coverage: 0.5,
             reportedBps: 0,
             observationCount: 1,
             qualityFlags: [],
@@ -252,4 +263,26 @@ it("loads application summary automatically without a manual history query", asy
   ).toBe(false);
   expect(wrapper.text()).toContain("应用带宽排行");
   expect(wrapper.text()).toContain("123 Kbps");
+});
+
+it("queries a bounded window and displays interval traffic with its coverage", async () => {
+  const { wrapper, calls } = await render();
+  const request = calls.find((c) =>
+    c.url.pathname.endsWith("/applications/summary"),
+  )!;
+  expect(request.url.searchParams.has("from")).toBe(true);
+  expect(request.url.searchParams.has("to")).toBe(true);
+  expect(wrapper.get("[data-application-total-bytes]").text()).toContain(
+    "1.46 MiB",
+  );
+  expect(wrapper.get("[data-application-coverage]").text()).toContain("50%");
+  await wrapper.get("#application-window").setValue("168");
+  await flushPromises();
+  const latest = calls
+    .filter((c) => c.url.pathname.endsWith("/applications/summary"))
+    .at(-1)!;
+  expect(
+    Date.parse(latest.url.searchParams.get("to")!) -
+      Date.parse(latest.url.searchParams.get("from")!),
+  ).toBe(7 * 86400000);
 });

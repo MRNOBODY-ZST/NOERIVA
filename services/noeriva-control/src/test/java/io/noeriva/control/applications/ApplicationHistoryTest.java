@@ -54,5 +54,45 @@ import static org.assertj.core.api.Assertions.*;
             .isInstanceOf(org.springframework.web.reactive.function.client.WebClientResponseException.class)
             .satisfies(error->assertThat(((org.springframework.web.reactive.function.client.WebClientResponseException)error).getResponseBodyAsString()).containsAnyOf("TOO_MANY_ROWS","TOO_MANY_BYTES"));
     }
+    Observation interval(String id,int index,Instant at,String delta,double seconds){return new Observation(ApplicationRates.hash(id),"router",index,"eth"+index,42,"tls","IN",at,"18446744073709551000",null,null,Double.parseDouble(delta)*8/seconds,null,seconds,"epoch",List.of(),delta);}
+    @Test void windowClipsDeltasAndSumsInterfaceMeansWithoutDividingByInterfaceCount(){
+        Instant from=now.minusSeconds(120),to=now.minusSeconds(30);
+        history.append(org,List.of(interval("one",8,now.minusSeconds(60),"600",60),interval("two",8,now,"1200",60),interval("three",9,now,"2400",120))).block(WAIT);
+        var result=history.window(org,"router",null,"","",from,to,12,180).block(WAIT);
+        assertThat(result.totalBytes()).isEqualTo("3000");
+        assertThat(result.items().getFirst().derivedBps()).isCloseTo(266.6666666667,within(.000001));
+        assertThat(result.items().getFirst().coverage()).isEqualTo(1);
+        assertThat(result.items().getFirst().qualityFlags()).contains("ESTIMATED_BOUNDARY","INTERFACE_OVERLAP_POSSIBLE");
+        assertThat(result.trend()).hasSize(2);
+        assertThat(history.window("foreign","router",null,"","",from,to,12,180).block(WAIT).totalBytes()).isNull();
+    }
+    @Test void windowPreservesMissingAndZeroAndFlagsLegacyEstimates(){
+        Instant from=now.minusSeconds(120);
+        var old=new Observation(ApplicationRates.hash("legacy"),"router",8,"eth8",42,"tls","IN",now,"999999999",null,null,80d,null,60d,"epoch",List.of());
+        history.append(org,List.of(old,row("missing",9,"OUT","tls",now),interval("zero",10,now,"0",60))).block(WAIT);
+        var result=history.window(org,"router",null,"","",from,now,12,180).block(WAIT);
+        assertThat(result.inBytes()).isEqualTo("600");assertThat(result.outBytes()).isNull();assertThat(result.totalBytes()).isEqualTo("600");
+        assertThat(result.meanBps()).isNull();assertThat(result.coverage()).isZero();assertThat(result.qualityFlags()).contains("HISTORICAL_RATE_ESTIMATE","PARTIAL_WINDOW");
+        assertThat(result.trend().getFirst().inBps()).isNull();
+        assertThat(history.window(org,"router",10,"IN","",from,now,12,180).block(WAIT).totalBytes()).isEqualTo("0");
+    }
+    @Test void windowRetainsUnsignedIncrementPrecisionAndSevenDayBuckets(){
+        String delta="18446744073709551610";
+        history.append(org,List.of(interval("huge",8,now,delta,60))).block(WAIT);
+        var result=history.window(org,"router",8,"IN","",now.minusSeconds(7*86400),now,12,180).block(WAIT);
+        assertThat(result.inBytes()).isEqualTo(delta);assertThat(result.items().getFirst().cumulativeBytes()).isEqualTo(delta);
+        assertThat(result.resolutionSeconds()).isEqualTo(86400);assertThat(result.trend()).hasSize(7);
+        assertThat(result.trend().getLast().inBytes()).isEqualTo(delta);assertThat(result.trend().getFirst().inBps()).isNull();
+    }
+    @Test void invalidIntervalsDoNotTurnMissingCountersIntoZeroTraffic(){
+        var invalid=new Observation(ApplicationRates.hash("bad-delta"),"router",8,"eth8",42,"tls","IN",now,"999",null,null,10d,null,60d,"epoch",List.of(),"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999");
+        history.append(org,List.of(invalid)).block(WAIT);
+        assertThat(history.window(org,"router",8,"IN","",now.minusSeconds(60),now,12,180).block(WAIT).totalBytes()).isNull();
+    }
+    @Test void windowExcludesOverlappingRepeatedBaselineIntervals(){
+        history.append(org,List.of(interval("a",8,now.minusSeconds(30),"600",60),interval("b",8,now,"900",90))).block(WAIT);
+        var result=history.window(org,"router",8,"IN","",now.minusSeconds(90),now,12,180).block(WAIT);
+        assertThat(result.totalBytes()).isEqualTo("600");assertThat(result.qualityFlags()).contains("OVERLAPPING_INTERVAL_EXCLUDED");
+    }
     @Test void queryAndWriteFailuresRemainUnavailable(){var bad=new ApplicationHistory(WebClient.builder(),new MockEnvironment().withProperty("NOERIVA_CLICKHOUSE_URL","http://127.0.0.1:1"),json);assertThatThrownBy(()->bad.append(org,List.of(row("a",8,"IN","http",now))).block(WAIT)).isInstanceOf(ApiException.class);assertThatThrownBy(()->bad.query(org,"router",null,"","",now.minusSeconds(60),now.plusSeconds(1),10,null).block(WAIT)).isInstanceOf(ApiException.class);}
 }

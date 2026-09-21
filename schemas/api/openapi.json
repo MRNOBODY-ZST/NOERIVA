@@ -3,7 +3,7 @@
   "info": {
     "title": "NOERIVA Clarity workspace API",
     "version": "0.1.0",
-    "description": "Current organization is derived from authentication. Only implemented endpoints are listed. Clarity includes bounded current-state queries and typed incident, audit, configuration, evidence, collector-reported check, and temporal correlation workflows. Read-only SNMP/Redfish/fixed-profile SSH access, credential administration, periodic collection, safe device SSE and bounded review of stored neighbor evidence are included. Signatures, WORM, remote device configuration are outside this contract; hardware evidence is model/protocol-specific and does not establish whole-family certification. All mutations require X-Noeriva-Request: 1 and application/json. x-required-roles lists alternative accepted account roles. Basic and opaque Bearer authentication are supported; cookie authentication is not used. Nullable measurements are not zero. JSON integer revisions follow Java int64; clients must preserve precision when handling large values."
+    "description": "Current organization is derived from authentication. Only implemented endpoints are listed. Clarity includes bounded current-state queries and typed incident, audit, configuration, evidence, collector-reported check, and temporal correlation workflows. Read-only SNMP/Redfish/fixed-profile SSH access, credential administration, periodic collection, safe device SSE and bounded review of stored neighbor evidence are included. Signatures, WORM, remote device configuration are outside this contract; hardware evidence is model/protocol-specific and does not establish whole-family certification. All mutations require X-Noeriva-Request: 1; requests with a body use application/json. x-required-roles lists alternative accepted account roles. Basic and opaque Bearer authentication are supported; cookie authentication is not used. Nullable measurements are not zero. JSON integer revisions follow Java int64; clients must preserve precision when handling large values."
   },
   "servers": [
     {
@@ -1594,6 +1594,255 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "ADMIN: remove asset from active inventory and stop future collection",
+        "x-required-roles": [
+          "ADMIN"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Noeriva-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bounded request",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required; security-filter errors may have an empty body",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or request-header denied; security-filter errors may have an empty body",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in authorized scope",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or unsupported source",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Capacity reached; Retry-After applies",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Application error responses use 1 second."
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal request failure; no provider details disclosed",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Provider or feature unavailable; not an empty or zero result",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retires the authorized device while retaining historical observations and audit evidence. Request has no body. A missing, foreign or already retired device returns 404. An active collection, application, configuration or check lease returns 409 DEVICE_BUSY; retry after it finishes."
       }
     },
     "/devices/{id}/summary": {
@@ -2666,7 +2915,7 @@
             }
           }
         },
-        "description": "Positive range at most seven days; to allows at most five seconds of server clock skew. Defaults: to=now, from=to minus one hour. points is a maximum budget, not a promise of zero-filled samples. Requires an assigned metric capability; unsupported sources return 409."
+        "description": "Positive range at most seven days; to allows at most five seconds of server clock skew. Defaults: to=now, from=to minus one hour. points controls the bucket width; each bucket averages all original observations, with null for empty buckets. The summary mean uses every original sample, never an average of bucket means. Raw queries are bounded at 100000 samples and 2 MiB; exceeding either returns an explicit provider error. Bandwidth volume and temporal coverage are labelled estimates based on adjacent valid observations, without extrapolating missing time. Requires an assigned metric capability; unsupported sources return 409."
       }
     },
     "/devices/{id}/interfaces/{interfaceId}/bandwidth/heatmap": {
@@ -6424,6 +6673,17 @@
             }
           },
           {
+            "name": "interfaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": "",
+              "description": "Optional exact interface within deviceId. Requires deviceId and an empty cursor."
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
@@ -6948,7 +7208,7 @@
             }
           }
         },
-        "description": "Counts cover the full authorized site scope, not only a fetched device page. Here totals.stale and siteHealth.stale count previously observed assets with no source checkpoint fresh within 180 seconds; never-observed assets are missing, not stale. The /overview endpoint uses the same definition. Site directory max1000, priority CRITICAL/WARNING/UNKNOWN devices max10. trafficSource is the latest bandwidth-bearing source in scope and represents one device, not an aggregated site total. Unscoped recentEvents covers seven days/max5 and has explicit UNAVAILABLE on history failure. A site-filtered query returns recentEventsStatus=NOT_REQUESTED and an empty event list. Global source timestamps may change between the bounded aggregate queries; this is not an atomic historical snapshot."
+        "description": "Counts cover the full authorized site scope, not only a fetched device page. Here totals.stale and siteHealth.stale count previously observed assets with no source checkpoint fresh within 180 seconds; never-observed assets are missing, not stale. The /overview endpoint uses the same definition. Site directory max1000, priority CRITICAL/WARNING/UNKNOWN devices max10. trafficSource is the latest bandwidth-bearing source in scope and represents one device, not an aggregated site total. Unscoped recentEvents includes only actionable problem events in seven days/max5, excludes routine collection messages, and has explicit UNAVAILABLE on history failure. A site-filtered query returns recentEventsStatus=NOT_REQUESTED and an empty event list. Global source timestamps may change between the bounded aggregate queries; this is not an atomic historical snapshot."
       }
     },
     "/workspace/search": {
@@ -18761,7 +19021,7 @@
     },
     "/applications/summary": {
       "get": {
-        "summary": "Latest sample application rate distribution",
+        "summary": "Window application traffic and average bandwidth",
         "x-required-roles": [
           "ADMIN",
           "OPERATOR",
@@ -18805,6 +19065,24 @@
             "schema": {
               "type": "string",
               "maxLength": 80
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
@@ -19047,7 +19325,7 @@
             }
           }
         },
-        "description": "Reads at most 512 rows from the newest device sample, never mixes older matching applications into that sample. Group by application and direction across selected interfaces, ordered by derivedBps descending with nulls last. All component rates must be present before a sum is returned. reportedBps remains separate. Multiple interfaces can observe the same traffic and carry INTERFACE_OVERLAP_POSSIBLE; this is not deduplicated end-to-end traffic. Quality flags preserve baseline/reset/row-limit evidence, and a stale sample remains STALE."
+        "description": "At most seven days; omitted bounds select the latest hour. Bounded server aggregation sums validated interval increments clipped to the selected window, never lifetime counters. Exact increments are retained as decimal strings; older observations use stored derived rates and carry HISTORICAL_RATE_ESTIMATE. Boundary allocation assumes uniform traffic within an observed interval and carries ESTIMATED_BOUNDARY. Overlapping observations are excluded to avoid duplicate traffic. Per-interface means divide by valid observed duration, then sum across interfaces. Coverage is the minimum valid-duration fraction among the returned streams, not a guarantee of all applications or network traffic. Missing data remains null, partial totals describe observed traffic only. Totals include all matching applications before the ranking limit. Trend bins are one minute up to one hour, five minutes up to six hours, hourly up to a day and daily thereafter. Interfaces may observe the same traffic; multiple interfaces carry INTERFACE_OVERLAP_POSSIBLE."
       }
     },
     "/nat-audit/sources": {
@@ -20461,7 +20739,7 @@
             }
           }
         },
-        "description": "Owned device's named rx/tx bandwidth gauge, sampled at at most 2000 equally spaced query points into 168 local-hour cells. No interface re-summing occurs. Response interfaceId is __device__, statistic is sample_mean and coverage is sampled-point coverage, not counter-delta duration coverage. Device aggregate includes the collector's observed interfaces; logical and physical interfaces can overlap, disclosed by INTERFACE_OVERLAP_POSSIBLE. Null remains unavailable. Original per-interface counter-rollup endpoint remains available."
+        "description": "Owned device's named rx/tx bandwidth gauge, aggregated from all original stored observations into 168 local-hour cells. Raw reads are bounded at 100000 samples and 2 MiB; exceeding a bound fails explicitly. No interface re-summing occurs. Response interfaceId is __device__, statistic is sample_mean and coverage estimates observed-sample count against the inferred sampling cadence, not counter-delta duration coverage. Device aggregate includes the collector's observed interfaces; logical and physical interfaces can overlap, disclosed by INTERFACE_OVERLAP_POSSIBLE. Null remains unavailable. Original per-interface counter-rollup endpoint remains available."
       }
     },
     "/settings": {
@@ -23082,6 +23360,52 @@
           "qualityFlags"
         ]
       },
+      "MetricWindowSummary": {
+        "type": "object",
+        "properties": {
+          "mean": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sampleCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimatedBytes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Estimated integral of adjacent valid bandwidth gauges, in bytes. Null without covered intervals; gaps and boundaries are not extrapolated."
+          },
+          "observedSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "coverage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "statistic": {
+            "type": "string",
+            "enum": [
+              "sample_mean"
+            ]
+          }
+        },
+        "required": [
+          "mean",
+          "sampleCount",
+          "estimatedBytes",
+          "observedSeconds",
+          "coverage",
+          "statistic"
+        ]
+      },
       "MetricResponse": {
         "type": "object",
         "properties": {
@@ -23131,7 +23455,7 @@
           "resolution": {
             "type": "integer",
             "minimum": 1,
-            "description": "Query step in seconds."
+            "description": "Mean bucket width in seconds. Points are bucket means, timestamped at each bucket end."
           },
           "dataRevision": {
             "type": "integer",
@@ -23151,6 +23475,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/MetricWindowSummary"
           },
           "points": {
             "type": "array",
@@ -23190,6 +23517,7 @@
           "provisional",
           "coverage",
           "qualityFlags",
+          "summary",
           "points"
         ]
       },
@@ -28058,6 +28386,14 @@
             ],
             "pattern": "^[0-9]+$"
           },
+          "intervalBytes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$",
+            "description": "Exact validated byte increment since the preceding sample; null for old payloads or invalid intervals."
+          },
           "reportedBps": {
             "type": [
               "number",
@@ -28101,6 +28437,7 @@
           "observedAt",
           "bytes",
           "packets",
+          "intervalBytes",
           "reportedBps",
           "derivedBps",
           "derivedPacketsPerSecond",
@@ -28188,11 +28525,16 @@
               "null"
             ]
           },
-          "reportedBps": {
+          "cumulativeBytes": {
             "type": [
-              "number",
+              "string",
               "null"
             ]
+          },
+          "coverage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           },
           "observationCount": {
             "type": "integer"
@@ -28209,9 +28551,61 @@
           "direction",
           "interfaceIndices",
           "derivedBps",
-          "reportedBps",
+          "cumulativeBytes",
+          "coverage",
           "observationCount",
           "qualityFlags"
+        ]
+      },
+      "ApplicationTrendPoint": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inBps": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "outBps": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "inBytes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outBytes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coverage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "timestamp",
+          "end",
+          "inBps",
+          "outBps",
+          "inBytes",
+          "outBytes",
+          "coverage"
         ]
       },
       "ApplicationSummary": {
@@ -28254,8 +28648,54 @@
           "rateBasis": {
             "type": "string",
             "enum": [
-              "COUNTER_DELTA_PER_SECOND"
+              "OBSERVED_INTERVAL_MEAN"
             ]
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalBytes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inBytes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outBytes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "meanBps": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "coverage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "resolutionSeconds": {
+            "type": "integer"
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationTrendPoint"
+            }
           },
           "interfaceIndices": {
             "type": "array",
@@ -28293,6 +28733,15 @@
           "mode",
           "freshness",
           "rateBasis",
+          "from",
+          "to",
+          "totalBytes",
+          "inBytes",
+          "outBytes",
+          "meanBps",
+          "coverage",
+          "resolutionSeconds",
+          "trend",
           "interfaceIndices",
           "sampleRows",
           "totalApplications",

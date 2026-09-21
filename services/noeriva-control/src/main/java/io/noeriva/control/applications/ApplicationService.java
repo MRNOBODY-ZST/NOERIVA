@@ -37,6 +37,12 @@ import static io.noeriva.control.applications.ApplicationModels.*;
                 .timeout(Duration.ofSeconds(45)).doFinally(signal->collectors.release());
         }).cache(); // A started bounded collection finishes when the HTTP reader navigates away.
     }
+    public Mono<WindowSummary> window(Operator user,String device,Integer index,String direction,String q,Instant from,Instant to,int limit){
+        role(user,false);String d=direction==null?"":direction,text=q==null?"":q.trim();
+        if(device==null||device.isBlank()||device.length()>64||index!=null&&index<1||limit<1||limit>30||!Set.of("","IN","OUT").contains(d)||text.length()>80)throw invalid();
+        return devices.required(user.organizationId(),device).then(store.source(user.organizationId(),device))
+            .flatMap(source->history.window(user.organizationId(),device,index,d,text,from,to,limit,Math.max(180,source.intervalSeconds()*3)));
+    }
     public Mono<Summary> summary(Operator user,String device,Integer index,String direction,String q,int limit){
         role(user,false);String d=direction==null?"":direction,text=q==null?"":q.trim();
         if(device==null||device.isBlank()||device.length()>64||index!=null&&index<1||limit<1||limit>30||!Set.of("","IN","OUT").contains(d)||text.length()>80)throw invalid();

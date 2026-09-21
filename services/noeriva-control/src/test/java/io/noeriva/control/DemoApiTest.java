@@ -46,4 +46,17 @@ class DemoApiTest {
         admin().get().uri("/api/v1/devices/compute-07/connections").exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isArray();
         admin().get().uri("/api/v1/device-support").exchange().expectStatus().isOk().expectBody().jsonPath("$.credentialStorageReady").isEqualTo(false);
     }
+    @Test void administratorCanRemoveAssetAndReadersCannot() {
+        var created=admin().post().uri("/api/v1/devices").header("X-Noeriva-Request","1")
+            .bodyValue(Map.of("name","delete-fixture","type","HOST","siteId","lab-a","managementAddress","192.0.2.90"))
+            .exchange().expectStatus().isCreated().expectBody(Map.class).returnResult().getResponseBody();
+        String path="/api/v1/devices/"+created.get("id");
+        for(String role:new String[]{"viewer"})client.delete().uri(path).headers(h->h.setBasicAuth(role,"noeriva-local-demo"))
+            .header("X-Noeriva-Request","1").exchange().expectStatus().isForbidden();
+        admin().delete().uri(path).exchange().expectStatus().isForbidden();
+        admin().delete().uri(path).header("X-Noeriva-Request","1").exchange().expectStatus().isNoContent();
+        admin().get().uri(path).exchange().expectStatus().isNotFound();
+        admin().get().uri("/api/v1/devices?q=delete-fixture").exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
+        admin().delete().uri(path).header("X-Noeriva-Request","1").exchange().expectStatus().isNotFound();
+    }
 }

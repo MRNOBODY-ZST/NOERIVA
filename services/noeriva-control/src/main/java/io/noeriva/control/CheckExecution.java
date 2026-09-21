@@ -44,14 +44,14 @@ public class CheckExecution {
     public Mono<CheckResult> run(Operator actor,String id,long revision) {
         if(actor.roles().stream().noneMatch(Set.of("ADMIN","OPERATOR")::contains))
             return Mono.error(new ApiException(HttpStatus.FORBIDDEN,"CHECK_EXECUTION_FORBIDDEN","An operator must run a network check"));
-        return workbench.check(actor,id).flatMap(check->{
+        return workbench.activeCheck(actor,id).flatMap(check->{
             if(check.archived()||check.revision()!=revision)return Mono.error(ApiException.conflict());
             if(!"MANUAL".equals(check.provenance()))return Mono.error(new ApiException(HttpStatus.CONFLICT,"SYNTHETIC_DEFINITION","Synthetic fixtures cannot execute real network checks"));
             return Mono.defer(()->{
                 if(!permits.tryAcquire())return Mono.error(new ApiException(HttpStatus.TOO_MANY_REQUESTS,"CHECK_BUSY","Network check capacity reached"));
                 String token=UUID.randomUUID().toString();
                 return Mono.usingWhen(claim(actor.organizationId(),check,token).thenReturn(token), ignored ->
-                    workbench.check(actor,id).flatMap(current->{
+                    workbench.activeCheck(actor,id).flatMap(current->{
                         if(current.archived()||current.revision()!=revision)return Mono.error(ApiException.conflict());
                         return observe(current).flatMap(observation->workbench.reportResult(
                             new Operator(actor.username(),"",actor.organizationId(),List.of("COLLECTOR")),
@@ -132,10 +132,10 @@ public class CheckExecution {
     }
     private Mono<Void> claim(String org,Check check,String token) {
         if(db==null)return Mono.defer(()->memoryLeases.putIfAbsent(org+"/"+check.id(),token)==null?Mono.empty():Mono.error(ApiException.conflict()));
-        return db.sql("INSERT IGNORE INTO check_execution(organization_id,check_id) VALUES(:org,:id)").bind("org",org).bind("id",check.id()).fetch().rowsUpdated()
+        return DeviceLifecycle.activeTransaction(db,org,check.deviceId(),db.sql("INSERT IGNORE INTO check_execution(organization_id,check_id) VALUES(:org,:id)").bind("org",org).bind("id",check.id()).fetch().rowsUpdated()
             .then(db.sql("UPDATE check_execution SET lease_id=:token,lease_until=UTC_TIMESTAMP(6)+INTERVAL 30 SECOND,last_attempt_at=UTC_TIMESTAMP(6),definition_revision=:revision WHERE organization_id=:org AND check_id=:id AND (lease_until IS NULL OR lease_until<UTC_TIMESTAMP(6))")
                 .bind("token",token).bind("revision",check.revision()).bind("org",org).bind("id",check.id()).fetch().rowsUpdated())
-            .flatMap(count->count==1?Mono.empty():Mono.error(new ApiException(HttpStatus.CONFLICT,"CHECK_ALREADY_RUNNING","This check is already running")));
+            .flatMap(count->count==1?Mono.empty():Mono.error(new ApiException(HttpStatus.CONFLICT,"CHECK_ALREADY_RUNNING","This check is already running"))));
     }
     private Mono<Void> release(String org,Check check,String token) {
         if(db==null)return Mono.fromRunnable(()->memoryLeases.remove(org+"/"+check.id(),token));
@@ -145,7 +145,7 @@ public class CheckExecution {
     @Scheduled(fixedDelay=5000,initialDelay=20000) public void tick() {
         if(!worker||db==null||!scheduled.compareAndSet(false,true))return;
         record Due(String org,String id,long revision){}
-        db.sql("SELECT r.organization_id,r.id,r.revision FROM workbench_record r LEFT JOIN check_execution e ON e.organization_id=r.organization_id AND e.check_id=r.id WHERE r.category='CHECK' AND r.status='ENABLED' AND JSON_UNQUOTE(r.payload->'$.provenance')='MANUAL' AND (e.next_run_at IS NULL OR e.next_run_at<=UTC_TIMESTAMP(6) OR e.definition_revision<>r.revision) AND (e.lease_until IS NULL OR e.lease_until<UTC_TIMESTAMP(6)) ORDER BY e.next_run_at,r.organization_id,r.id LIMIT 32")
+        db.sql("SELECT r.organization_id,r.id,r.revision FROM workbench_record r LEFT JOIN check_execution e ON e.organization_id=r.organization_id AND e.check_id=r.id WHERE EXISTS(SELECT 1 FROM device d WHERE d.organization_id=r.organization_id AND d.id=r.device_id AND d.deleted_at IS NULL) AND r.category='CHECK' AND r.status='ENABLED' AND JSON_UNQUOTE(r.payload->'$.provenance')='MANUAL' AND (e.next_run_at IS NULL OR e.next_run_at<=UTC_TIMESTAMP(6) OR e.definition_revision<>r.revision) AND (e.lease_until IS NULL OR e.lease_until<UTC_TIMESTAMP(6)) ORDER BY e.next_run_at,r.organization_id,r.id LIMIT 32")
             .map((row,metadata)->new Due(row.get("organization_id",String.class),row.get("id",String.class),row.get("revision",Long.class))).all()
             .flatMap(due->run(new Operator("check-worker","",due.org(),List.of("ADMIN")),due.id(),due.revision()).onErrorResume(error->Mono.empty()),4)
             .then().doFinally(signal->scheduled.set(false)).onErrorComplete().subscribe();

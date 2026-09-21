@@ -86,13 +86,13 @@ public class DiscoveryService {
               AND c.slot=(SELECT preferred.slot FROM device_connection preferred
                 WHERE preferred.organization_id=d.organization_id AND preferred.device_id=d.id AND preferred.enabled=1 AND preferred.slot IN ('snmp','ssh')
                 ORDER BY CASE preferred.slot WHEN 'snmp' THEN 0 ELSE 1 END LIMIT 1)
-            WHERE d.organization_id=:org AND d.site_id=:site AND d.id IN (:ids) ORDER BY d.id
+            WHERE d.deleted_at IS NULL AND d.organization_id=:org AND d.site_id=:site AND d.id IN (:ids) ORDER BY d.id
             """).bind("org",org).bind("site",in.siteId()).bind("ids",in.sourceDeviceIds())
             .map((r,m)->new DiscoveryEvidence.Source(r.get("id",String.class),r.get("name",String.class),r.get("observed_at",String.class),r.get("observations",String.class),r.get("flags",String.class),r.get("addresses",String.class),r.get("dhcp",String.class))).all().collectList();
     }
     record Asset(String id,String address) {}
     private Mono<List<Asset>> assets(String org,String site,Collection<String> addresses,boolean lock){
-        return db.sql("SELECT /*+ MAX_EXECUTION_TIME(3000) */ id,management_address FROM device WHERE organization_id=:org AND site_id=:site AND management_address IN (:addresses) ORDER BY id LIMIT 1025"+(lock?" FOR UPDATE":""))
+        return db.sql("SELECT /*+ MAX_EXECUTION_TIME(3000) */ id,management_address FROM device WHERE deleted_at IS NULL AND organization_id=:org AND site_id=:site AND management_address IN (:addresses) ORDER BY id LIMIT 1025"+(lock?" FOR UPDATE":""))
             .bind("org",org).bind("site",site).bind("addresses",addresses).map((r,m)->new Asset(r.get("id",String.class),r.get("management_address",String.class))).all().collectList()
             .map(rows->{if(rows.size()>1024)throw capacity();return rows;});
     }
@@ -204,7 +204,7 @@ public class DiscoveryService {
         return bounded(true,()->locked(a,id).flatMap(c->{
             if(c.associatedDeviceId()!=null){if(c.associatedDeviceId().equals(in.deviceId()))return Mono.just(c);return Mono.error(new ApiException(HttpStatus.CONFLICT,"CANDIDATE_ALREADY_ASSOCIATED","This candidate is already associated with another asset"));}
             if(c.revision()!=in.revision())return Mono.error(ApiException.conflict());
-            return db.sql("SELECT id FROM device WHERE organization_id=:org AND site_id=:site AND id=:id").bind("org",a.organizationId()).bind("site",c.siteId()).bind("id",in.deviceId()).map((r,m)->r.get("id",String.class)).one().switchIfEmpty(Mono.error(ApiException.missing())).flatMap(device->{
+            return db.sql("SELECT id FROM device WHERE deleted_at IS NULL AND organization_id=:org AND site_id=:site AND id=:id").bind("org",a.organizationId()).bind("site",c.siteId()).bind("id",in.deviceId()).map((r,m)->r.get("id",String.class)).one().switchIfEmpty(Mono.error(ApiException.missing())).flatMap(device->{
                 Candidate result=associate(c,device,"LINKED",null);return persist(a.organizationId(),List.of(result)).then(audit(a,"DISCOVERY_LINK",c.id())).thenReturn(result);
             });
         }));

@@ -69,6 +69,32 @@ class ProviderHttpTest {
         var repository=new VictoriaMetricsRepository(QueryHttpClient.create(url,null,null));
         StepVerifier.create(repository.loadMetrics("org-a","device-a",MetricDefinition.require("cpu_percent"),from,to,11)).expectError(ProviderUnavailableException.class).verify();
     }
+    @Test void rawExportPreservesEveryOriginalSampleAcrossChunksAndBindsScope() throws Exception {
+        AtomicReference<String> request=new AtomicReference<>();
+        String labels="\"__name__\":\"noeriva_cpu_percent\",\"organization_id\":\"org-a\",\"device_id\":\"device-a\"";
+        String url=serve(exchange->{request.set(URLDecoder.decode(exchange.getRequestURI().toString(),StandardCharsets.UTF_8));
+            respond(exchange,200,"{\"metric\":{"+labels+"},\"values\":[0,60,120],\"timestamps\":[1788652800000,1788652830000,1788652840000]}\n"
+                +"{\"metric\":{"+labels+"},\"values\":[120,600,\"NaN\"],\"timestamps\":[1788652840000,1788652890000,1788652920000]}\n");});
+        var repository=new VictoriaMetricsRepository(QueryHttpClient.create(url,null,null));
+        StepVerifier.create(repository.loadSamples("org-a","device-a",MetricDefinition.require("cpu_percent"),from,to)).assertNext(result->{
+            assertEquals(5,result.points().size());assertEquals(0.0,result.points().getFirst().value());
+            assertEquals(600.0,result.points().get(3).value());assertNull(result.points().getLast().value());
+            assertTrue(result.qualityFlags().contains("NON_FINITE_SAMPLE"));
+        }).verifyComplete();
+        assertTrue(request.get().startsWith("/api/v1/export?"));assertTrue(request.get().contains("match[]=noeriva_cpu_percent{organization_id=\"org-a\",device_id=\"device-a\"}"));
+        assertTrue(request.get().contains("max_rows_per_line=10000"));assertTrue(request.get().contains("deny_partial_response=1"));
+    }
+    @Test void rawExportRejectsForeignScopeAmbiguousSourcesAndConflictingSamples() throws Exception {
+        AtomicReference<String> body=new AtomicReference<>();String url=serve(exchange->respond(exchange,200,body.get()));
+        var repository=new VictoriaMetricsRepository(QueryHttpClient.create(url,null,null));
+        String labels="\"__name__\":\"noeriva_cpu_percent\",\"organization_id\":\"org-a\",\"device_id\":\"device-a\"";
+        String first="{\"metric\":{"+labels+"},\"values\":[1],\"timestamps\":[1788652800000]}\n";
+        for(String invalid:List.of(first.replace("org-a","org-b"),first+first.replace("device-a\"","device-a\",\"source_id\":\"other\""),first+first.replace("[1]","[2]"))) {
+            body.set(invalid);
+            StepVerifier.create(repository.loadSamples("org-a","device-a",MetricDefinition.require("cpu_percent"),from,to))
+                .expectError(ProviderUnavailableException.class).verify();
+        }
+    }
     @Test void sixHourChartUsesInWindowFractionalGridWithoutProviderCacheRounding() throws Exception {
         Instant chartFrom=Instant.parse("2026-09-06T02:06:38.123Z"),chartTo=chartFrom.plusSeconds(21600);
         AtomicReference<String> query=new AtomicReference<>();

@@ -79,6 +79,14 @@ export interface Interface {
   adminStatus: string;
   operStatus: string;
 }
+export interface MetricWindowSummary {
+  mean: number | null;
+  sampleCount: number;
+  estimatedBytes: string | null;
+  observedSeconds: number;
+  coverage: number;
+  statistic: string;
+}
 export interface MetricSeries extends Quality {
   deviceId: string;
   metric: string;
@@ -87,6 +95,7 @@ export interface MetricSeries extends Quality {
   to: string;
   source: string;
   points: { timestamp: string; value: number | null }[];
+  summary?: MetricWindowSummary;
 }
 export interface HeatCell extends Omit<Quality, "resolution"> {
   date: string;

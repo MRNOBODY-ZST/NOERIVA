@@ -95,6 +95,7 @@ export interface ApplicationObservation {
   derivedPacketsPerSecond: number | null;
   intervalSeconds: number | null;
   sourceEpoch: string;
+  intervalBytes?: string | null;
   qualityFlags: string[];
 }
 export const trafficStatus: Record<string, string> = {
@@ -111,6 +112,12 @@ export const trafficStatus: Record<string, string> = {
   STALE: "超过 120 秒未收到报文",
 };
 export const qualityNames: Record<string, string> = {
+  PARTIAL_WINDOW: "时间窗覆盖不完整",
+  HISTORICAL_RATE_ESTIMATE: "旧样本按已存速率估算流量",
+  ESTIMATED_BOUNDARY: "跨边界按采样区间均匀分配",
+  OVERLAPPING_INTERVAL_EXCLUDED: "重叠采样区间已排除",
+  OBSERVED_INTERVAL_MEAN: "按有效采样时长计算平均值",
+  INTERFACE_OVERLAP_POSSIBLE: "不同接口可能重复观察同一流量",
   NBAR_BASELINE_REQUIRED: "等待相邻样本建立差分基线",
   NBAR_COUNTER_RESET: "计数下降或基线重置",
   NBAR_GAP: "样本间隔过长",
@@ -209,6 +216,23 @@ export interface ApplicationSummary {
   mode: string;
   freshness: string;
   rateBasis: string;
+  from: string;
+  to: string;
+  totalBytes: string | null;
+  inBytes: string | null;
+  outBytes: string | null;
+  meanBps: number | null;
+  coverage: number;
+  resolutionSeconds: number;
+  trend: {
+    timestamp: string;
+    end: string;
+    inBps: number | null;
+    outBps: number | null;
+    inBytes: string | null;
+    outBytes: string | null;
+    coverage: number;
+  }[];
   interfaceIndices: number[];
   sampleRows: number;
   totalApplications: number;
@@ -219,7 +243,8 @@ export interface ApplicationSummary {
     direction: "IN" | "OUT";
     interfaceIndices: number[];
     derivedBps: number | null;
-    reportedBps: number | null;
+    cumulativeBytes: string | null;
+    coverage: number;
     observationCount: number;
     qualityFlags: string[];
   }[];
