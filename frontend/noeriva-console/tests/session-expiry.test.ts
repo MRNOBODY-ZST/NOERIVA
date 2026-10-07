@@ -4,9 +4,11 @@ import { createPinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import App from "../src/App.vue";
+import QueryState from "../src/components/QueryState.vue";
 import { useSessionStore } from "../src/stores/session";
 import type { Session } from "../src/services/types";
 import {
+  ApiError,
   clearAuthorization,
   openEventStream,
   request,
@@ -345,6 +347,75 @@ describe("authorization cancellation without native AbortSignal.any", () => {
 });
 
 describe("expired workspace", () => {
+  it.each(["request", "stream"])(
+    "returns %s 401 headers to the home login without waiting for its response body",
+    async (kind) => {
+      let body!: ReadableStreamDefaultController<Uint8Array>;
+      vi.stubGlobal("fetch", async (url: string) => {
+        if (!url.endsWith("/expired"))
+          return Response.json({ timezone: "UTC" });
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              body = controller;
+            },
+          }),
+          {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Request-Id": "7d6a987c-6007-4d38-8bde-dafbdda20334",
+            },
+          },
+        );
+      });
+      const { auth, router, wrapper } = await workspace();
+      const expired = (
+        kind === "request"
+          ? request("/expired")
+          : openEventStream("/expired", new AbortController().signal)
+      ).catch((error: unknown) => error);
+      try {
+        await flushPromises();
+        expect(auth.session).toBeNull();
+        expect(router.currentRoute.value.fullPath).toBe("/overview");
+        expect(wrapper.find(".login-page").exists()).toBe(true);
+        await expect(expired).resolves.toMatchObject({
+          status: 401,
+          requestId: "7d6a987c-6007-4d38-8bde-dafbdda20334",
+        });
+      } finally {
+        // Release the deliberately stalled fixture even when the assertion fails.
+        try {
+          body.close();
+        } catch {
+          // The client may already have cancelled the unauthorized body.
+        }
+      }
+    },
+  );
+
+  it("recovers an existing current-session query error to the home login", async () => {
+    vi.stubGlobal("fetch", async () => Response.json({ timezone: "UTC" }));
+    const { auth, router, wrapper } = await workspace();
+    const errorState = mount(QueryState, {
+      props: {
+        error: new ApiError(
+          "登录已失效或凭据不正确，请重新登录。",
+          401,
+          "held-error",
+        ),
+      },
+    });
+    cleanup.push(() => errorState.unmount());
+    await flushPromises();
+    expect(auth.session).toBeNull();
+    expect(router.currentRoute.value.fullPath).toBe("/overview");
+    expect(wrapper.find(".login-page").exists()).toBe(true);
+    expect(errorState.find('[role="alert"]').exists()).toBe(false);
+    expect(errorState.emitted("retry")).toBeUndefined();
+  });
+
   it.each(["request", "stream"])(
     "returns %s 401 to the home login and clears queries and open dialogs",
     async (kind) => {

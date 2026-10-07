@@ -1,16 +1,42 @@
 <script setup lang="ts">
-import { ApiError } from "../services/api";
-defineProps<{
+import { computed, ref, watch } from "vue";
+import { ApiError, recoverAuthorizationError } from "../services/api";
+const props = defineProps<{
   pending?: boolean;
   error?: Error | null;
   empty?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 }>();
-defineEmits<{ retry: [] }>();
+const emit = defineEmits<{ retry: [] }>();
+const unauthorized = computed(
+  () => props.error instanceof ApiError && props.error.status === 401,
+);
+const returningToLogin = ref(false);
+watch(
+  () => props.error,
+  (error) => {
+    if (!(error instanceof ApiError) || error.status !== 401) return;
+    returningToLogin.value = recoverAuthorizationError(error);
+    // An old request's rejection must not expire a newer login. Recover its
+    // data once when the error changes, using the current authorization.
+    if (!returningToLogin.value) emit("retry");
+  },
+  { immediate: true },
+);
 </script>
 <template>
-  <div v-if="error" class="error-state" role="alert">
+  <div
+    v-if="unauthorized"
+    class="loading-state"
+    role="status"
+    aria-live="polite"
+  >
+    <span>{{
+      returningToLogin ? "正在返回首页登录…" : "正在恢复当前会话的数据…"
+    }}</span>
+  </div>
+  <div v-else-if="error" class="error-state" role="alert">
     <strong>{{
       error instanceof ApiError && error.status === 403
         ? "访问受限"

@@ -19,9 +19,10 @@ export function onAuthorizationExpired(listener: () => void) {
 function expireAuthorization(version: number, authenticated: boolean) {
   // A late response from a previous login must not erase a newer session,
   // even when the server issued the same token for both logins.
-  if (!authenticated || version !== authorizationVersion) return;
+  if (!authenticated || version !== authorizationVersion) return false;
   clearAuthorization();
   for (const listener of expiryListeners) listener();
+  return true;
 }
 
 function requestSignal(signal?: AbortSignal | null) {
@@ -108,10 +109,37 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public requestId?: string,
+    public readonly generation = authorizationVersion,
+    public readonly authenticated = !!authorization,
   ) {
     super(message);
     this.name = "ApiError";
   }
+}
+export function recoverAuthorizationError(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    error.status === 401 &&
+    expireAuthorization(error.generation, error.authenticated)
+  );
+}
+function rejectUnauthorized(
+  response: Response,
+  version: number,
+  authenticated: boolean,
+): never {
+  const error = new ApiError(
+    "登录已失效或凭据不正确，请重新登录。",
+    401,
+    response.headers.get("X-Request-Id") || undefined,
+    version,
+    authenticated,
+  );
+  // Authentication is decided by the headers; a stalled error body must not
+  // keep the rejected session on screen or attach it to a later login.
+  recoverAuthorizationError(error);
+  void response.body?.cancel().catch(() => {});
+  throw error;
 }
 export function setAuthorization(username: string, password: string) {
   updateAuthorization(
@@ -140,13 +168,15 @@ export async function openEventStream(path: string, signal: AbortSignal) {
       credentials: "omit",
       cache: "no-store",
     });
+    if (response.status === 401)
+      rejectUnauthorized(response, version, authenticated);
     if (!response.ok) {
-      if (response.status === 401) expireAuthorization(version, authenticated);
       throw new ApiError(
-        response.status === 401
-          ? "登录已失效或凭据不正确，请重新登录。"
-          : "实时连接暂时不可用。",
+        "实时连接暂时不可用。",
         response.status,
+        response.headers.get("X-Request-Id") || undefined,
+        version,
+        authenticated,
       );
     }
     if (
@@ -193,6 +223,8 @@ export async function request<T>(
         throw error;
       throw new ApiError("无法连接 API，请检查服务状态后重试。", 0);
     }
+    if (response.status === 401)
+      rejectUnauthorized(response, version, authenticated);
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as {
         message?: string;
@@ -200,16 +232,15 @@ export async function request<T>(
         requestId?: string;
       };
       const fallback =
-        response.status === 401
-          ? "登录已失效或凭据不正确，请重新登录。"
-          : response.status === 403
-            ? "当前账号没有执行此操作的权限。"
-            : "请求失败，请重试。";
-      if (response.status === 401) expireAuthorization(version, authenticated);
+        response.status === 403
+          ? "当前账号没有执行此操作的权限。"
+          : "请求失败，请重试。";
       throw new ApiError(
         body.message || body.detail || fallback,
         response.status,
         body.requestId || response.headers.get("X-Request-Id") || undefined,
+        version,
+        authenticated,
       );
     }
     if (response.status === 204) return undefined as T;
