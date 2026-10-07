@@ -50,11 +50,13 @@ public class ControlController {
         return required(user.organizationId(),id).flatMap(d->{if(!d.capabilities().contains("metrics"))return Mono.error(new ApiException(HttpStatus.CONFLICT,"UNSUPPORTED_CAPABILITY","No metric source is assigned to this device"));return query.metrics(user.organizationId(),id,metric,start,end,points);});
     }
     @GetMapping("/devices/{id}/interfaces/{interfaceId}/bandwidth/heatmap") public Mono<HeatmapResponse> heatmap(@AuthenticationPrincipal Operator user,@PathVariable String id,@PathVariable String interfaceId,
-        @RequestParam String timezone,@RequestParam(defaultValue="rx") String direction,@RequestParam(defaultValue="7") int days,@RequestParam(defaultValue="time_weighted_mean") String statistic){
+        @RequestParam String timezone,@RequestParam(defaultValue="rx") String direction,@RequestParam(defaultValue="7") int days,@RequestParam(defaultValue="time_weighted_mean") String statistic,
+        @RequestParam(defaultValue="0") int gridSize){
+        QueryService.validateGridSize(gridSize);
         if(days!=7||!statistic.equals("time_weighted_mean"))return Mono.error(new IllegalArgumentException("Only the seven-day time-weighted mean is supported"));
         return required(user.organizationId(),id).then(repository.interfaces(user.organizationId(),id).filter(i->i.id().equals(interfaceId)).next().switchIfEmpty(Mono.error(ApiException.missing())))
             .then(repository.interfaceSource(user.organizationId(),id,interfaceId).switchIfEmpty(Mono.error(ApiException.missing())))
-            .flatMap(source->query.heatmap(user.organizationId(),id,interfaceId,source,timezone,direction));
+            .flatMap(source->query.heatmap(user.organizationId(),id,interfaceId,source,timezone,direction,gridSize));
     }
     @org.springframework.beans.factory.annotation.Autowired private TopologyService topologyService;
     @GetMapping("/topology") public Mono<Topology> topology(@AuthenticationPrincipal Operator user,

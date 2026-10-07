@@ -5,6 +5,10 @@ import { RefreshCw } from "@lucide/vue";
 import { request, queryString } from "../services/api";
 import { useApiQuery } from "../services/queries";
 import ChartCanvas from "../components/ChartCanvas.vue";
+import {
+  timeSeriesOption,
+  applicationRankingOption,
+} from "../utils/chartOptions";
 import StatusBadge from "../components/StatusBadge.vue";
 import { usePagedQuery } from "../services/workbench";
 import {
@@ -89,121 +93,34 @@ const applicationChartHeight = computed(
   () =>
     `${Math.max(300, (overview.data.value?.items.length || 0) * 34 + 55)}px`,
 );
-const applicationChart = computed(() => ({
-  animation:
-    !prefs.reducedMotion &&
-    !globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
-  animationDuration: 350,
-  grid: { left: 120, right: 24, top: 18, bottom: 40 },
-  tooltip: {
-    trigger: "axis",
-    renderMode: "richText",
-    valueFormatter: (v: unknown) =>
-      formatRate(typeof v === "number" ? v : null),
-  },
-  xAxis: {
-    type: "value",
-    splitNumber: 3,
-    axisLabel: {
-      formatter: (v: number) => formatRate(v),
-      hideOverlap: true,
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-    },
-    splitLine: {
-      lineStyle: { type: "dashed", color: prefs.dark ? "#2a3b4d" : "#e9eef4" },
-    },
-  },
-  yAxis: {
-    type: "category",
-    inverse: true,
-    data:
-      overview.data.value?.items.map(
-        (row) => `${row.application} · ${row.direction === "IN" ? "入" : "出"}`,
-      ) || [],
-    axisLabel: {
-      width: 110,
-      overflow: "truncate",
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-    },
-  },
-  series: [
-    {
-      name: "区间平均带宽",
-      type: "bar",
-      barMaxWidth: 20,
-      data:
-        overview.data.value?.items.map((row) => ({
-          value: row.derivedBps,
-          itemStyle: {
-            color: row.direction === "IN" ? "#397fb7" : "#70a897",
-            borderRadius: [0, 3, 3, 0],
-          },
-        })) || [],
-    },
-  ],
-}));
-const trendChart = computed(() => ({
-  animation: false,
-  grid: { left: 68, right: 24, top: 40, bottom: 45 },
-  tooltip: {
-    trigger: "axis",
-    renderMode: "richText",
-    valueFormatter: (v: unknown) =>
-      formatRate(typeof v === "number" ? v : null),
-  },
-  legend: {
-    data: ["入站", "出站"],
-    top: 2,
-    textStyle: { color: prefs.dark ? "#a8b7c8" : "#526478" },
-  },
-  xAxis: {
-    type: "time",
-    splitNumber: 4,
-    axisLabel: {
-      hideOverlap: true,
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-      formatter: (v: number) =>
-        new Intl.DateTimeFormat("zh-CN", {
-          timeZone: prefs.timezone,
-          ...(overview.data.value?.resolutionSeconds &&
-          overview.data.value.resolutionSeconds >= 86400
-            ? { month: "2-digit" as const, day: "2-digit" as const }
-            : { hour: "2-digit" as const, minute: "2-digit" as const }),
-          hourCycle: "h23",
-        }).format(v),
-    },
-  },
-  yAxis: {
-    type: "value",
-    axisLabel: {
-      formatter: (v: number) => formatRate(v),
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-    },
-    splitLine: {
-      lineStyle: { type: "dashed", color: prefs.dark ? "#2a3b4d" : "#e9eef4" },
-    },
-  },
-  series: [
-    {
-      name: "入站",
-      type: "line",
-      showSymbol: false,
-      connectNulls: false,
-      itemStyle: { color: "#397fb7" },
-      data:
-        overview.data.value?.trend?.map((p) => [p.timestamp, p.inBps]) || [],
-    },
-    {
-      name: "出站",
-      type: "line",
-      showSymbol: false,
-      connectNulls: false,
-      itemStyle: { color: "#70a897" },
-      data:
-        overview.data.value?.trend?.map((p) => [p.timestamp, p.outBps]) || [],
-    },
-  ],
-}));
+const rankingMode = ref<"bandwidth" | "bytes">("bandwidth");
+const applicationChart = computed(() =>
+  applicationRankingOption(
+    overview.data.value?.items || [],
+    rankingMode.value,
+    prefs.dark,
+  ),
+);
+const trendChart = computed(() =>
+  timeSeriesOption({
+    dark: prefs.dark,
+    timezone: prefs.timezone,
+    daily: (overview.data.value?.resolutionSeconds || 0) >= 86400,
+    format: formatRate,
+    series: [
+      {
+        name: "入站",
+        data:
+          overview.data.value?.trend?.map((p) => [p.timestamp, p.inBps]) || [],
+      },
+      {
+        name: "出站",
+        data:
+          overview.data.value?.trend?.map((p) => [p.timestamp, p.outBps]) || [],
+      },
+    ],
+  }),
+);
 const bucketLabel = computed(() => {
   const seconds = overview.data.value?.resolutionSeconds;
   return seconds
@@ -518,10 +435,26 @@ function save() {
       </div>
       <div class="application-charts">
         <div>
-          <h3>区间平均带宽排行</h3>
+          <div class="application-chart-heading">
+            <h3>
+              {{
+                rankingMode === "bytes"
+                  ? "应用累计流量对比"
+                  : "区间平均带宽排行"
+              }}
+            </h3>
+            <select v-model="rankingMode" aria-label="应用排行指标">
+              <option value="bandwidth">平均带宽</option>
+              <option value="bytes">累计流量</option>
+            </select>
+          </div>
           <ChartCanvas
             :option="applicationChart"
-            label="应用区间平均带宽排行"
+            :label="
+              rankingMode === 'bytes'
+                ? '当前应用累计流量对比'
+                : '应用区间平均带宽排行'
+            "
             :height="applicationChartHeight"
           />
         </div>
@@ -545,10 +478,11 @@ function save() {
         {{ overview.data.value?.sampleRows }} 个方向样本 · 覆盖
         {{ overview.data.value?.totalApplications }} 个应用方向。<span
           v-if="overview.data.value?.truncated"
-          >图表展示平均带宽最高的 12 项；上方总量包含所有匹配应用。</span
+          >图表展示平均带宽最高的 12 项；累计流量模式仅比较这 12
+          项，上方总量包含所有匹配应用。</span
         >{{ qualityText(overview.data.value?.qualityFlags || []) }}
       </p>
-      <details class="data-alternative" open>
+      <details class="data-alternative">
         <summary>查看排行数值与来源质量</summary>
         <div class="table-scroll">
           <table class="data-table">
@@ -1024,5 +958,31 @@ function save() {
   .application-metrics strong {
     font-size: 20px;
   }
+}
+</style>
+
+<style scoped>
+.application-chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 34px;
+}
+.application-chart-heading h3 {
+  margin: 0;
+}
+.application-chart-heading select {
+  font-size: 12px;
+  min-height: 30px;
+  max-width: 140px;
+}
+.application-charts > div > h3 {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
 }
 </style>

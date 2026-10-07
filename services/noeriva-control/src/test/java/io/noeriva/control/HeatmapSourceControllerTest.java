@@ -26,7 +26,7 @@ class HeatmapSourceControllerTest {
         try{
             var controller=new ControlController(repository,query,null,null,null);
             var user=new SecurityConfiguration.Operator("operator","redacted","org-authorized",List.of("ROLE_OPERATOR"));
-            var result=controller.heatmap(user,"device-a","port-a","UTC","rx",7,"time_weighted_mean").block(Duration.ofSeconds(3));
+            var result=controller.heatmap(user,"device-a","port-a","UTC","rx",7,"time_weighted_mean",0).block(Duration.ofSeconds(3));
             assertEquals("CLICKHOUSE:network",result.source());assertEquals(List.of("org-authorized","device-a","port-a"),lookup.get());
         }finally{query.close();}
     }

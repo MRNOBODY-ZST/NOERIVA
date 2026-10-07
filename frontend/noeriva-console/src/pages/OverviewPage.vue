@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from "vue";
 import { TriangleAlert, RefreshCw } from "@lucide/vue";
-import type { EChartsCoreOption } from "echarts/core";
+import { timeSeriesOption, siteHealthOption } from "../utils/chartOptions";
+import { useRouter } from "vue-router";
 import { useApiQuery } from "../services/queries";
 import { queryString } from "../services/api";
 import type { Page, Alert, Site, MetricSeries } from "../services/types";
@@ -63,73 +64,36 @@ const chartEmpty = computed(
       (point) => point.value != null,
     ),
 );
-const trafficOption = computed<EChartsCoreOption>(() => ({
-  animation: false,
-  aria: { enabled: true },
-  grid: { left: 65, right: 20, top: 20, bottom: 35 },
-  tooltip: {
-    trigger: "axis",
-    valueFormatter: (value: unknown) =>
-      formatRate(typeof value === "number" ? value : null),
-  },
-  xAxis: {
-    type: "time",
-    axisLine: { lineStyle: { color: prefs.dark ? "#304154" : "#d6dfe9" } },
-    axisLabel: {
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-      fontSize: 12,
-      formatter: (value: number) =>
-        new Intl.DateTimeFormat("zh-CN", {
-          timeZone: prefs.timezone,
-          ...(Number(hours.value) > 24
-            ? { month: "2-digit" as const, day: "2-digit" as const }
-            : { hour: "2-digit" as const, minute: "2-digit" as const }),
-          hourCycle: "h23",
-        }).format(value),
-    },
-    axisTick: { show: false },
-    splitNumber: 5,
-  },
-  yAxis: {
-    type: "value",
-    axisLabel: {
-      color: prefs.dark ? "#a8b7c8" : "#526478",
-      fontSize: 11,
-      formatter: (value: number) => formatRate(value),
-    },
-    splitLine: {
-      lineStyle: { color: prefs.dark ? "#304154" : "#d6dfe9", type: "dashed" },
-    },
-  },
-  series: [
-    {
-      name: "入站",
-      type: "line",
-      showSymbol: false,
-      connectNulls: false,
-      data:
-        rx.data.value?.points.map((point) => [point.timestamp, point.value]) ||
-        [],
-      lineStyle: { color: prefs.dark ? "#8ab8ff" : "#255ea8", width: 2.4 },
-      itemStyle: { color: prefs.dark ? "#8ab8ff" : "#255ea8" },
-    },
-    {
-      name: "出站",
-      type: "line",
-      showSymbol: false,
-      connectNulls: false,
-      data:
-        tx.data.value?.points.map((point) => [point.timestamp, point.value]) ||
-        [],
-      lineStyle: {
-        color: prefs.dark ? "#8499ae" : "#64758a",
-        width: 1.7,
-        type: "dashed",
+const router = useRouter();
+const trafficOption = computed(() =>
+  timeSeriesOption({
+    dark: prefs.dark,
+    timezone: prefs.timezone,
+    daily: Number(hours.value) > 24,
+    format: formatRate,
+    series: [
+      {
+        name: "入站",
+        data: rx.data.value?.points.map((p) => [p.timestamp, p.value]) || [],
       },
-      itemStyle: { color: prefs.dark ? "#8499ae" : "#64758a" },
-    },
-  ],
-}));
+      {
+        name: "出站",
+        data: tx.data.value?.points.map((p) => [p.timestamp, p.value]) || [],
+      },
+    ],
+  }),
+);
+const healthOption = computed(() =>
+  siteHealthOption(data.value?.siteHealth || [], prefs.dark),
+);
+function openSite(payload: unknown) {
+  const index = (payload as { dataIndex?: number })?.dataIndex;
+  if (index == null) return;
+  const site = data.value?.siteHealth[index];
+  if (site)
+    void router.push({ path: "/assets", query: { siteId: site.siteId } });
+}
+
 function refresh() {
   rangeEnd.value = new Date().toISOString();
   void refetch();
@@ -318,6 +282,7 @@ function retryTraffic() {
               ><ChartCanvas
                 :option="trafficOption"
                 :label="`${traffic.deviceName} 入站与出站带宽趋势`"
+                height="300px"
             /></QueryState>
             <p class="chart-footnote">
               {{
@@ -343,45 +308,58 @@ function retryTraffic() {
             <h2>站点健康</h2>
             <RouterLink to="/assets" class="small">查看资产 →</RouterLink>
           </header>
-          <div
-            class="table-scroll"
-            role="region"
-            aria-label="站点健康统计"
-            tabindex="0"
-          >
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>站点</th>
-                  <th>资产</th>
-                  <th>需关注</th>
-                  <th>状态未知</th>
-                  <th>数据过期</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in data.siteHealth" :key="item.siteId">
-                  <td>
-                    <RouterLink
-                      :to="{ path: '/assets', query: { siteId: item.siteId } }"
-                      >{{ item.siteName }}</RouterLink
-                    >
-                  </td>
-                  <td>{{ item.devices }}</td>
-                  <td>{{ item.critical + item.warning }} 台</td>
-                  <td>{{ item.unknown }} 台</td>
-                  <td>
-                    <span :class="item.stale ? 'danger-text' : 'muted'"
-                      >{{ item.stale }} 台</span
-                    >
-                  </td>
-                </tr>
-                <tr v-if="!data.siteHealth.length">
-                  <td colspan="5">当前范围尚无站点</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ChartCanvas
+            v-if="data.siteHealth.length"
+            :option="healthOption"
+            label="各站点资产健康状态堆叠条形图"
+            :height="`${Math.max(220, data.siteHealth.length * 44 + 90)}px`"
+            @select="openSite"
+          />
+          <details class="data-alternative site-health-details">
+            <summary>查看站点数值与资产入口</summary>
+            <div
+              class="table-scroll"
+              role="region"
+              aria-label="站点健康统计"
+              tabindex="0"
+            >
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>站点</th>
+                    <th>资产</th>
+                    <th>需关注</th>
+                    <th>状态未知</th>
+                    <th>数据过期</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in data.siteHealth" :key="item.siteId">
+                    <td>
+                      <RouterLink
+                        :to="{
+                          path: '/assets',
+                          query: { siteId: item.siteId },
+                        }"
+                        >{{ item.siteName }}</RouterLink
+                      >
+                    </td>
+                    <td>{{ item.devices }}</td>
+                    <td>{{ item.critical + item.warning }} 台</td>
+                    <td>{{ item.unknown }} 台</td>
+                    <td>
+                      <span :class="item.stale ? 'danger-text' : 'muted'"
+                        >{{ item.stale }} 台</span
+                      >
+                    </td>
+                  </tr>
+                  <tr v-if="!data.siteHealth.length">
+                    <td colspan="5">当前范围尚无站点</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
           <footer class="panel-foot">
             <span>健康与数据过期分别统计</span><span>{{ prefs.timezone }}</span>
           </footer>

@@ -12,16 +12,24 @@ import { queryString } from "../services/api";
 import type { Site, Page, MetricSeries } from "../services/types";
 import { usePreferencesStore } from "../stores/preferences";
 import { formatTime, shortNumber, formatMetric } from "../utils/format";
+import { timeSeriesOption } from "../utils/chartOptions";
+import { bucketLabel, trendPoints } from "../utils/metricWindow";
+import {
+  monitoringMetrics,
+  monitoringSourceKey,
+} from "../utils/monitoringComparison";
 import QueryState from "../components/QueryState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import PagePager from "../components/PagePager.vue";
 import ChartCanvas from "../components/ChartCanvas.vue";
+import MonitoringComparison from "../components/MonitoringComparison.vue";
 const prefs = usePreferencesStore(),
   route = useRoute();
 const q = ref(""),
   siteId = ref(String(route.query.siteId || "")),
   freshness = ref(""),
   selected = ref<MonitoringSource | null>(null),
+  comparisonMetric = ref(""),
   metric = ref("temperature_celsius"),
   hours = ref("1"),
   to = ref(new Date().toISOString()),
@@ -36,67 +44,73 @@ const list = usePagedQuery<MonitoringSource>(
     deviceId: String(route.query.deviceId || ""),
   })),
 );
-function select(source: MonitoringSource) {
+const supportedMetrics = computed(() =>
+  monitoringMetrics(list.data.value?.items || []),
+);
+watch(
+  supportedMetrics,
+  (available) => {
+    if (!available.includes(comparisonMetric.value))
+      comparisonMetric.value = available[0] || "";
+  },
+  { immediate: true },
+);
+function select(source: MonitoringSource, requestedMetric?: string) {
   selected.value = source;
   metric.value =
+    (requestedMetric && metricNames[requestedMetric] ? requestedMetric : "") ||
     Object.keys(source.metrics).find((key) => key === "temperature_celsius") ||
     Object.keys(source.metrics).find((key) => metricNames[key]) ||
     "";
   to.value = new Date().toISOString();
 }
 watch([q, siteId, freshness], () => (selected.value = null));
+watch(
+  () => list.data.value?.items,
+  (sources) => {
+    if (!selected.value || !sources) return;
+    selected.value =
+      sources.find(
+        (source) =>
+          monitoringSourceKey(source) === monitoringSourceKey(selected.value!),
+      ) || null;
+  },
+);
+watch(
+  () => route.query.deviceId,
+  () => (selected.value = null),
+);
+const historyMetrics = computed(() => [
+  ...new Set([
+    ...(metricNames[metric.value] ? [metric.value] : []),
+    ...monitoringMetrics(selected.value ? [selected.value] : []),
+  ]),
+]);
 const series = useApiQuery<MetricSeries>(
   computed(
     () =>
-      `/devices/${selected.value?.deviceId}/metrics${queryString({ metric: metric.value, from: new Date(Date.parse(to.value) - Number(hours.value) * 3600000).toISOString(), to: to.value, points: 120 })}`,
+      `/devices/${selected.value?.deviceId}/metrics${queryString({ metric: metric.value, from: new Date(Date.parse(to.value) - Number(hours.value) * 3600000).toISOString(), to: to.value, points: trendPoints(Number(hours.value)) })}`,
   ),
   () => !!selected.value && !!metricNames[metric.value],
 );
-const chart = computed(() => ({
-  animation: false,
-  grid: { left: 60, right: 24, top: 20, bottom: 42 },
-  tooltip: {
-    trigger: "axis",
-    renderMode: "richText",
-    valueFormatter: (v: unknown) =>
-      formatMetric(
-        typeof v === "number" ? v : null,
-        metricNames[metric.value]?.unit,
-      ),
-  },
-  xAxis: {
-    type: "time",
-    axisLabel: {
-      formatter: (v: number) =>
-        new Intl.DateTimeFormat("zh-CN", {
-          timeZone: prefs.timezone,
-          hour: "2-digit",
-          minute: "2-digit",
-          hourCycle: "h23",
-        }).format(v),
-    },
-  },
-  yAxis: {
-    type: "value",
-    name: metric.value.endsWith("_bps")
+const chart = computed(() =>
+  timeSeriesOption({
+    dark: prefs.dark,
+    timezone: prefs.timezone,
+    daily: Number(hours.value) >= 168,
+    unit: metric.value.endsWith("_bps")
       ? "带宽"
-      : series.data.value?.unit || metricNames[metric.value]?.unit,
-    axisLabel: {
-      formatter: (v: number) =>
-        formatMetric(v, metricNames[metric.value]?.unit),
-    },
-  },
-  series: [
-    {
-      type: "line",
-      showSymbol: false,
-      connectNulls: false,
-      data: series.data.value?.points.map((p) => [p.timestamp, p.value]) || [],
-      lineStyle: { width: 2, color: "#255ea8" },
-      itemStyle: { color: "#255ea8" },
-    },
-  ],
-}));
+      : metricNames[metric.value]?.unit,
+    format: (v) => formatMetric(v, metricNames[metric.value]?.unit),
+    series: [
+      {
+        name: metricNames[metric.value]?.name || metric.value,
+        data:
+          series.data.value?.points.map((p) => [p.timestamp, p.value]) || [],
+      },
+    ],
+  }),
+);
 function value(key: string, v: number | null) {
   return formatMetric(
     v,
@@ -163,87 +177,104 @@ watch(
       empty-title="等待监测来源"
       empty-description="当前范围没有采集来源。资产登记后，需要由采集端上报观测。"
       @retry="list.refetch()"
-      ><div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>设备 / 来源</th>
-              <th>站点</th>
-              <th>状态与新鲜度</th>
-              <th>当前观测</th>
-              <th>采集时间</th>
-              <th>历史</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="s in list.data.value?.items"
-              :key="`${s.deviceId}/${s.sourceId}`"
-              :class="{
-                'wb-select-row':
-                  selected?.deviceId === s.deviceId &&
-                  selected?.sourceId === s.sourceId,
-              }"
-            >
-              <td>
-                <RouterLink :to="`/devices/${s.deviceId}`">{{
-                  s.deviceName
-                }}</RouterLink>
-                <p class="secondary-line">{{ s.kind }} · {{ s.sourceId }}</p>
-              </td>
-              <td>{{ s.siteName }}</td>
-              <td>
-                <StatusBadge
-                  :status="s.freshness === 'STALE' ? 'UNKNOWN' : s.health"
-                />
-                <div class="secondary-line">
-                  <StatusBadge :status="s.freshness" />
-                </div>
-              </td>
-              <td>
-                <div
-                  v-for="[key, v] in Object.entries(s.metrics).slice(0, 6)"
-                  :key="key"
-                  class="small"
-                >
-                  {{ metricNames[key]?.name || key }} · {{ value(key, v) }}
-                </div>
-                <span v-if="!Object.keys(s.metrics).length" class="small muted"
-                  >此来源未提供聚合读数</span
-                >
-                <details v-if="Object.keys(s.metrics).length > 6" class="small">
-                  <summary>
-                    另 {{ Object.keys(s.metrics).length - 6 }} 项指标
-                  </summary>
+      ><MonitoringComparison
+        v-model:metric="comparisonMetric"
+        :sources="list.data.value?.items || []"
+        :dark="prefs.dark"
+        :selected-key="selected ? monitoringSourceKey(selected) : undefined"
+        @select="select"
+      />
+      <details class="data-alternative" data-monitoring-details>
+        <summary>
+          来源明细 · {{ list.data.value?.items.length || 0 }} 个来源
+        </summary>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>设备 / 来源</th>
+                <th>站点</th>
+                <th>状态与新鲜度</th>
+                <th>当前观测</th>
+                <th>采集时间</th>
+                <th>历史</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in list.data.value?.items"
+                :key="monitoringSourceKey(s)"
+                :class="{
+                  'wb-select-row':
+                    selected?.deviceId === s.deviceId &&
+                    selected?.sourceId === s.sourceId,
+                }"
+              >
+                <td>
+                  <RouterLink :to="`/devices/${s.deviceId}`">{{
+                    s.deviceName
+                  }}</RouterLink>
+                  <p class="secondary-line">{{ s.kind }} · {{ s.sourceId }}</p>
+                </td>
+                <td>{{ s.siteName }}</td>
+                <td>
+                  <StatusBadge
+                    :status="s.freshness === 'STALE' ? 'UNKNOWN' : s.health"
+                  />
+                  <div class="secondary-line">
+                    <StatusBadge :status="s.freshness" />
+                  </div>
+                </td>
+                <td>
                   <div
-                    v-for="[key, v] in Object.entries(s.metrics).slice(6)"
+                    v-for="[key, v] in Object.entries(s.metrics).slice(0, 6)"
                     :key="key"
+                    class="small"
                   >
                     {{ metricNames[key]?.name || key }} · {{ value(key, v) }}
                   </div>
-                </details>
-                <p class="secondary-line">
-                  <RouterLink
-                    :to="{
-                      path: `/devices/${s.deviceId}`,
-                      query: { tab: 'monitoring' },
-                    }"
-                    >查看设备传感器 ↗</RouterLink
+                  <span
+                    v-if="!Object.keys(s.metrics).length"
+                    class="small muted"
+                    >此来源未提供聚合读数</span
                   >
-                </p>
-              </td>
-              <td class="small mono">
-                {{ formatTime(s.observedAt, prefs.timezone) }}
-              </td>
-              <td>
-                <button class="btn small-btn" @click="select(s)">
-                  查看趋势
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div></QueryState
+                  <details
+                    v-if="Object.keys(s.metrics).length > 6"
+                    class="small"
+                  >
+                    <summary>
+                      另 {{ Object.keys(s.metrics).length - 6 }} 项指标
+                    </summary>
+                    <div
+                      v-for="[key, v] in Object.entries(s.metrics).slice(6)"
+                      :key="key"
+                    >
+                      {{ metricNames[key]?.name || key }} · {{ value(key, v) }}
+                    </div>
+                  </details>
+                  <p class="secondary-line">
+                    <RouterLink
+                      :to="{
+                        path: `/devices/${s.deviceId}`,
+                        query: { tab: 'monitoring' },
+                      }"
+                      >查看设备传感器 ↗</RouterLink
+                    >
+                  </p>
+                </td>
+                <td class="small mono">
+                  {{ formatTime(s.observedAt, prefs.timezone) }}
+                </td>
+                <td>
+                  <button class="btn small-btn" @click="select(s)">
+                    查看趋势
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details></QueryState
     ><PagePager
       :pending="list.isFetching.value"
       :page="list.page.value"
@@ -257,26 +288,28 @@ watch(
   <div v-if="selected" class="wb-grid wb-spaced">
     <section class="panel">
       <header class="panel-head">
-        <h2>{{ selected.deviceName }} · 历史趋势</h2>
+        <div>
+          <h2>{{ selected.deviceName }} · 历史趋势</h2>
+          <p class="small muted">
+            {{ selected.kind }} / {{ selected.sourceId }} ·
+            {{ bucketLabel(series.data.value?.resolution) }}
+          </p>
+        </div>
         <button class="btn small-btn" @click="showValues = !showValues">
           {{ showValues ? "隐藏数据" : "查看数据" }}
         </button>
       </header>
       <div class="wb-tools">
         <select v-model="metric" class="input" aria-label="监测指标">
-          <option
-            v-for="key in Object.keys(selected.metrics).filter(
-              (k) => metricNames[k],
-            )"
-            :key="key"
-            :value="key"
-          >
+          <option v-for="key in historyMetrics" :key="key" :value="key">
             {{ metricNames[key]?.name }}
           </option></select
         ><select v-model="hours" class="input" aria-label="监测时间范围">
           <option value="0.25">最近 15 分钟</option>
           <option value="1">最近 1 小时</option>
           <option value="6">最近 6 小时</option>
+          <option value="24">最近 24 小时</option>
+          <option value="168">最近 7 天</option>
         </select>
       </div>
       <div v-if="!metric" class="wb-note">此来源尚未提供可查询的指标。</div>
@@ -284,7 +317,11 @@ watch(
         v-else
         :pending="series.isPending.value"
         :error="series.error.value"
-        :empty="!series.data.value?.points.length"
+        :empty="
+          !series.data.value?.points.some(
+            (point) => point.value !== null && Number.isFinite(point.value),
+          )
+        "
         empty-title="当前时间窗没有历史样本"
         @retry="series.refetch()"
         ><ChartCanvas

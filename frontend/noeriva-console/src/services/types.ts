@@ -117,6 +117,14 @@ export interface Heatmap extends Quality {
   toDate: string;
   source: string;
   cells: HeatCell[];
+  matrix?: { size: 7 | 28; cells: HeatmapMatrixCell[] } | null;
+}
+export interface HeatmapMatrixCell extends Omit<Quality, "resolution"> {
+  index: number;
+  intervals: { from: string; to: string; durationSeconds: number }[];
+  state: string;
+  value: number | null;
+  sampleCount: number | null;
 }
 export interface TopologyNode {
   id: string;

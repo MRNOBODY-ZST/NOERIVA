@@ -2920,7 +2920,7 @@
     },
     "/devices/{id}/interfaces/{interfaceId}/bandwidth/heatmap": {
       "get": {
-        "summary": "Seven local dates, 168 cells from revisioned summaries",
+        "summary": "Seven local dates from revisioned summaries, with an optional square matrix",
         "x-required-roles": [
           "ADMIN",
           "OPERATOR",
@@ -2971,6 +2971,20 @@
                 "time_weighted_mean"
               ],
               "default": "time_weighted_mean"
+            }
+          },
+          {
+            "name": "gridSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                7,
+                28
+              ],
+              "default": 0
             }
           },
           {
@@ -3218,7 +3232,7 @@
             }
           }
         },
-        "description": "Current local date and six preceding dates. Local-hour cells retain UTC intervals, including repeated and missing DST hours. Missing values stay null. Organization/device/interface ownership is checked before providers are queried. The data source is resolved from that authorized interface catalog source_id (manual primary or SNMP network), not supplied by the requester."
+        "description": "Current local date and six preceding dates. Local-hour cells retain UTC intervals, including repeated and missing DST hours. gridSize 7 or 28 additionally produces a chronological 49- or 784-cell square matrix over the same calendar range, including future intervals through the next local midnight. Five-minute ticks are distributed across the cells, whose actual UTC intervals must be displayed: widths vary, normally about 3h25\u201330m or 10\u201315m. Only complete stored rollups wholly inside a matrix interval contribute; indivisible boundary buckets carry RESOLUTION_UNAVAILABLE. Mean bandwidth is 8 times valid counter delta divided by valid duration. Future/unclosed buckets cannot add coverage. Missing values stay null. Organization/device/interface ownership is checked before providers are queried. The source is resolved from the authorized interface catalog source_id, not supplied by the requester. Original query limits and admission budgets remain unchanged."
       }
     },
     "/events": {
@@ -20449,7 +20463,7 @@
     },
     "/devices/{id}/bandwidth/heatmap": {
       "get": {
-        "summary": "Seven local dates of device aggregate bandwidth",
+        "summary": "Seven local dates of device aggregate bandwidth with an optional square matrix",
         "x-required-roles": [
           "ADMIN",
           "OPERATOR",
@@ -20500,6 +20514,20 @@
                 "time_weighted_mean"
               ],
               "default": "time_weighted_mean"
+            }
+          },
+          {
+            "name": "gridSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                7,
+                28
+              ],
+              "default": 0
             }
           },
           {
@@ -20739,7 +20767,7 @@
             }
           }
         },
-        "description": "Owned device's named rx/tx bandwidth gauge, aggregated from all original stored observations into 168 local-hour cells. Raw reads are bounded at 100000 samples and 2 MiB; exceeding a bound fails explicitly. No interface re-summing occurs. Response interfaceId is __device__, statistic is sample_mean and coverage estimates observed-sample count against the inferred sampling cadence, not counter-delta duration coverage. Device aggregate includes the collector's observed interfaces; logical and physical interfaces can overlap, disclosed by INTERFACE_OVERLAP_POSSIBLE. Null remains unavailable. Original per-interface counter-rollup endpoint remains available."
+        "description": "Owned device's named rx/tx bandwidth gauge, aggregated from all original stored observations into 168 local-hour cells. Optional gridSize 7 or 28 additionally returns 49 or 784 distinct chronological matrix intervals spanning the same seven local dates through the next local midnight. Five-minute ticks are distributed over those intervals; each carries its actual UTC bounds, including DST. Means and sample counts are computed directly from valid original observations within each interval, never by averaging hourly means or copying/interpolating coarse cells. Raw reads are bounded at 100000 samples and 2 MiB; exceeding a bound fails explicitly. Both views share the same read; query limits and admission budgets are unchanged. No interface re-summing occurs. Response interfaceId is __device__, statistic is sample_mean and coverage estimates observed-sample count against the inferred sampling cadence, not counter-delta duration coverage. Device aggregate includes the collector's observed interfaces; logical and physical interfaces can overlap, disclosed by INTERFACE_OVERLAP_POSSIBLE. Null remains unavailable. Original per-interface counter-rollup endpoint remains available."
       }
     },
     "/settings": {
@@ -23636,6 +23664,177 @@
           "qualityFlags"
         ]
       },
+      "MatrixCell": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 783,
+            "description": "Unique chronological row-major position, from zero to size squared minus one."
+          },
+          "intervals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "to": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "durationSeconds": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "from",
+                "to",
+                "durationSeconds"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "OBSERVED",
+              "OBSERVED_ZERO",
+              "MISSING",
+              "PARTIAL",
+              "FUTURE"
+            ]
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "coverage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sourceFreshness": {
+            "type": "string",
+            "enum": [
+              "FRESH",
+              "STALE",
+              "MISSING"
+            ]
+          },
+          "dataRevision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "qualityFlags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sampleCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "description": "Valid original gauge observation count; null for counter rollups, whose boundary samples cannot be counted as distinct observations."
+          }
+        },
+        "required": [
+          "index",
+          "intervals",
+          "state",
+          "value",
+          "coverage",
+          "asOf",
+          "sourceFreshness",
+          "dataRevision",
+          "provisional",
+          "qualityFlags",
+          "sampleCount"
+        ]
+      },
+      "HeatmapMatrix": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "enum": [
+              7,
+              28
+            ]
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatrixCell"
+            },
+            "minItems": 49,
+            "maxItems": 784
+          }
+        },
+        "required": [
+          "size",
+          "cells"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "size": {
+                  "const": 7
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "cells": {
+                  "minItems": 49,
+                  "maxItems": 49
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "size": {
+                  "const": 28
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "cells": {
+                  "minItems": 784,
+                  "maxItems": 784
+                }
+              }
+            }
+          }
+        ]
+      },
       "Heatmap": {
         "type": "object",
         "properties": {
@@ -23727,6 +23926,17 @@
             },
             "minItems": 168,
             "maxItems": 168
+          },
+          "matrix": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HeatmapMatrix"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional square matrix requested with gridSize=7 or 28; omitted/default 0 yields null and retains the original 168 hourly cells. The same bounded provider read generates both views."
           }
         },
         "required": [

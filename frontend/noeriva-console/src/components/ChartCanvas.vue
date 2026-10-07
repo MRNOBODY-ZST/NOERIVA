@@ -9,6 +9,7 @@ import {
 import { LineChart, HeatmapChart, GraphChart, BarChart } from "echarts/charts";
 import {
   GridComponent,
+  MatrixComponent,
   TooltipComponent,
   LegendComponent,
   VisualMapComponent,
@@ -23,6 +24,7 @@ use([
   HeatmapChart,
   GraphChart,
   GridComponent,
+  MatrixComponent,
   TooltipComponent,
   LegendComponent,
   VisualMapComponent,
@@ -209,7 +211,10 @@ defineExpose({ fit, zoom });
 onMounted(() => {
   if (!target.value) return;
   chart = init(target.value, undefined, { renderer: "svg" });
-  chart.on("rendered", scheduleInitialFit);
+  chart.on("rendered", () => {
+    target.value?.setAttribute("aria-label", props.label);
+    scheduleInitialFit();
+  });
   chart.setOption(props.option);
   chart.on("click", (payload) => emit("select", payload));
   chart.on("dblclick", (payload) => emit("open", payload));

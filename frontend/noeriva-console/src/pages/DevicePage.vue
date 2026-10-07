@@ -10,7 +10,7 @@ import {
   Radio,
   Clock3,
 } from "@lucide/vue";
-import type { EChartsCoreOption } from "echarts/core";
+import { timeSeriesOption } from "../utils/chartOptions";
 import { useApiQuery } from "../services/queries";
 import { queryString } from "../services/api";
 import type {
@@ -209,6 +209,7 @@ const {
   () => visibleMonitoring.value && hasMetricSource.value,
   { refetchInterval: false },
 );
+const heatGridSize = ref<7 | 28>(7);
 const {
   data: heatmap,
   error: heatError,
@@ -217,7 +218,7 @@ const {
 } = useApiQuery<Heatmap>(
   computed(
     () =>
-      `/devices/${encodeURIComponent(id.value)}${interfaceId.value ? `/interfaces/${encodeURIComponent(interfaceId.value)}` : ""}/bandwidth/heatmap${queryString({ timezone: prefs.timezone, direction: direction.value, days: 7, statistic: "time_weighted_mean" })}`,
+      `/devices/${encodeURIComponent(id.value)}${interfaceId.value ? `/interfaces/${encodeURIComponent(interfaceId.value)}` : ""}/bandwidth/heatmap${queryString({ timezone: prefs.timezone, direction: direction.value, gridSize: heatGridSize.value, days: 7, statistic: "time_weighted_mean" })}`,
   ),
   () =>
     visibleMonitoring.value && (hasMetricSource.value || !!interfaceId.value),
@@ -241,70 +242,32 @@ const sourceMetrics = computed(
       })),
     ) || [],
 );
-const metricOption = computed<EChartsCoreOption>(() => ({
-  animation: false,
-  grid: { left: 58, right: 22, top: 24, bottom: 40 },
-  tooltip: {
-    trigger: "axis",
-    renderMode: "richText",
-    valueFormatter: (value: unknown) =>
-      formatMetric(
-        typeof value === "number" ? value : null,
-        metric.value?.unit || metricLabels[activeMetric.value]?.unit,
-      ),
-  },
-  xAxis: {
-    type: "time",
-    axisLine: { lineStyle: { color: prefs.dark ? "#3d5066" : "#dfe6ed" } },
-    axisTick: { show: false },
-    axisLabel: {
-      color: prefs.dark ? "#b0bfd0" : "#536579",
-      fontSize: 11,
-      formatter: (value: number) =>
-        new Intl.DateTimeFormat("zh-CN", {
-          timeZone: prefs.timezone,
-          ...(Number(hours.value) > 24
-            ? { month: "2-digit" as const, day: "2-digit" as const }
-            : { hour: "2-digit" as const, minute: "2-digit" as const }),
-          hourCycle: "h23",
-        }).format(value),
-    },
-    splitLine: { show: false },
-  },
-  yAxis: {
-    type: "value",
-    name: activeMetric.value.endsWith("_bps")
+const metricOption = computed(() =>
+  timeSeriesOption({
+    dark: prefs.dark,
+    timezone: prefs.timezone,
+    daily: Number(hours.value) > 24,
+    unit: activeMetric.value.endsWith("_bps")
       ? "带宽"
       : metric.value?.unit || metricLabels[activeMetric.value]?.unit,
-    axisLabel: {
-      color: prefs.dark ? "#b0bfd0" : "#536579",
-      fontSize: 11,
-      formatter: (value: number) =>
-        activeMetric.value.endsWith("_bps")
-          ? formatRate(value)
-          : formatMetric(value, metricLabels[activeMetric.value]?.unit),
-    },
-    splitLine: {
-      lineStyle: { color: prefs.dark ? "#2a3b4d" : "#e9eef4", type: "dashed" },
-    },
-    nameTextStyle: { color: prefs.dark ? "#b0bfd0" : "#536579" },
-  },
-  series: [
-    {
-      name: metricLabels[activeMetric.value]?.label,
-      type: "line",
-      data:
-        metric.value?.points.map((point) => [point.timestamp, point.value]) ||
-        [],
-      connectNulls: false,
-      showSymbol: false,
-      smooth: false,
-      lineStyle: { color: prefs.dark ? "#8bbaff" : "#3d78b9", width: 2 },
-      itemStyle: { color: "#3d78b9" },
-      areaStyle: { color: prefs.dark ? "#8bbaff" : "#3d78b9", opacity: 0.055 },
-    },
-  ],
-}));
+    format: (value) =>
+      activeMetric.value.endsWith("_bps")
+        ? formatRate(value)
+        : formatMetric(
+            value,
+            metric.value?.unit || metricLabels[activeMetric.value]?.unit,
+          ),
+    series: [
+      {
+        name: metricLabels[activeMetric.value]?.label || activeMetric.value,
+        data:
+          metric.value?.points.map((point) => [point.timestamp, point.value]) ||
+          [],
+      },
+    ],
+  }),
+);
+
 function refresh() {
   rangeEnd.value = new Date().toISOString();
   void refetch();
@@ -631,7 +594,7 @@ function refresh() {
               <div>
                 <h2>七日带宽热力图</h2>
                 <p>
-                  日期 × 小时 ·
+                  连续时段矩阵 ·
                   {{ interfaceId ? "接口时间加权均值" : "设备汇总采样均值" }}
                 </p>
               </div>
@@ -665,7 +628,11 @@ function refresh() {
               :pending="heatPending"
               :error="heatError"
               @retry="refetchHeat()"
-              ><BandwidthHeatmap v-if="heatmap" :data="heatmap" /></QueryState
+              ><BandwidthHeatmap
+                v-if="heatmap"
+                :data="heatmap"
+                :grid-size="heatGridSize"
+                @size="heatGridSize = $event" /></QueryState
             ><QueryState
               v-else
               :pending="interfacePending"

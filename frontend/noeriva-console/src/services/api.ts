@@ -1,5 +1,108 @@
 const base = import.meta.env.VITE_API_BASE || "/api/v1";
 let authorization: string | null = null;
+let authorizationVersion = 0;
+let authorizationAbort = new AbortController();
+const expiryListeners = new Set<() => void>();
+
+function updateAuthorization(value: string | null) {
+  authorizationAbort.abort();
+  authorizationAbort = new AbortController();
+  authorization = value;
+  authorizationVersion++;
+}
+
+export function onAuthorizationExpired(listener: () => void) {
+  expiryListeners.add(listener);
+  return () => expiryListeners.delete(listener);
+}
+
+function expireAuthorization(version: number, authenticated: boolean) {
+  // A late response from a previous login must not erase a newer session,
+  // even when the server issued the same token for both logins.
+  if (!authenticated || version !== authorizationVersion) return;
+  clearAuthorization();
+  for (const listener of expiryListeners) listener();
+}
+
+function requestSignal(signal?: AbortSignal | null) {
+  const noCleanup = () => {};
+  if (!authorization) return { signal, cleanup: noCleanup, manual: false };
+  if (!signal)
+    return {
+      signal: authorizationAbort.signal,
+      cleanup: noCleanup,
+      manual: false,
+    };
+  if (typeof AbortSignal.any === "function")
+    return {
+      signal: AbortSignal.any([signal, authorizationAbort.signal]),
+      cleanup: noCleanup,
+      manual: false,
+    };
+
+  const combined = new AbortController();
+  const listeners: [AbortSignal, () => void][] = [];
+  const cleanup = () => {
+    for (const [source, listener] of listeners)
+      source.removeEventListener("abort", listener);
+    listeners.length = 0;
+  };
+  for (const source of [signal, authorizationAbort.signal]) {
+    if (source.aborted) {
+      combined.abort(source.reason);
+      cleanup();
+      break;
+    }
+    const abort = () => {
+      combined.abort(source.reason);
+      cleanup();
+    };
+    source.addEventListener("abort", abort, { once: true });
+    listeners.push([source, abort]);
+  }
+  return { signal: combined.signal, cleanup, manual: true };
+}
+
+function streamWithCleanup(response: Response, cleanup: () => void) {
+  const reader = response.body!.getReader();
+  let finished = false;
+  let cancelled = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    reader.releaseLock();
+  };
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const chunk = await reader.read();
+        if (cancelled || finished) return;
+        if (chunk.done) {
+          finish();
+          controller.close();
+        } else controller.enqueue(chunk.value);
+      } catch (error) {
+        if (cancelled || finished) return;
+        finish();
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      cancelled = true;
+      try {
+        await reader.cancel(reason);
+      } finally {
+        finish();
+      }
+    },
+  });
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -11,76 +114,109 @@ export class ApiError extends Error {
   }
 }
 export function setAuthorization(username: string, password: string) {
-  authorization = `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${username}:${password}`)))}`;
+  updateAuthorization(
+    `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${username}:${password}`)))}`,
+  );
 }
 export function setAccessToken(token: string) {
-  authorization = `Bearer ${token}`;
+  updateAuthorization(`Bearer ${token}`);
 }
 export function clearAuthorization() {
-  authorization = null;
+  updateAuthorization(null);
 }
 export async function openEventStream(path: string, signal: AbortSignal) {
+  const version = authorizationVersion;
+  const authenticated = !!authorization;
   const headers = new Headers({
     Accept: "text/event-stream",
     "X-Noeriva-Request": "1",
   });
   if (authorization) headers.set("Authorization", authorization);
-  const response = await fetch(`${base}${path}`, {
-    headers,
-    signal,
-    credentials: "omit",
-    cache: "no-store",
-  });
-  if (!response.ok) throw new ApiError("实时连接暂时不可用。", response.status);
-  if (
-    !response.headers.get("Content-Type")?.includes("text/event-stream") ||
-    !response.body
-  )
-    throw new ApiError("实时响应格式无效。", 502);
-  return response;
+  const scoped = requestSignal(signal);
+  try {
+    const response = await fetch(`${base}${path}`, {
+      headers,
+      signal: scoped.signal,
+      credentials: "omit",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      if (response.status === 401) expireAuthorization(version, authenticated);
+      throw new ApiError(
+        response.status === 401
+          ? "登录已失效或凭据不正确，请重新登录。"
+          : "实时连接暂时不可用。",
+        response.status,
+      );
+    }
+    if (
+      !response.headers.get("Content-Type")?.includes("text/event-stream") ||
+      !response.body
+    )
+      throw new ApiError("实时响应格式无效。", 502);
+    return scoped.manual
+      ? streamWithCleanup(response, scoped.cleanup)
+      : response;
+  } catch (error) {
+    scoped.cleanup();
+    throw error;
+  }
 }
 export async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const version = authorizationVersion;
+  const authenticated = !!authorization;
   const headers = new Headers(options.headers);
+  const scoped = requestSignal(options.signal);
   headers.set("Accept", "application/json");
   if (authorization) headers.set("Authorization", authorization);
   if (options.body) {
     headers.set("Content-Type", "application/json");
     headers.set("X-Noeriva-Request", "1");
   }
-  let response: Response;
   try {
-    response = await fetch(`${base}${path}`, {
-      ...options,
-      headers,
-      credentials: "omit",
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    throw new ApiError("无法连接 API，请检查服务状态后重试。", 0);
+    let response: Response;
+    try {
+      response = await fetch(`${base}${path}`, {
+        ...options,
+        headers,
+        signal: scoped.signal,
+        credentials: "omit",
+      });
+    } catch (error) {
+      if (
+        scoped.signal?.aborted ||
+        (error instanceof Error && error.name === "AbortError")
+      )
+        throw error;
+      throw new ApiError("无法连接 API，请检查服务状态后重试。", 0);
+    }
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        detail?: string;
+        requestId?: string;
+      };
+      const fallback =
+        response.status === 401
+          ? "登录已失效或凭据不正确，请重新登录。"
+          : response.status === 403
+            ? "当前账号没有执行此操作的权限。"
+            : "请求失败，请重试。";
+      if (response.status === 401) expireAuthorization(version, authenticated);
+      throw new ApiError(
+        body.message || body.detail || fallback,
+        response.status,
+        body.requestId || response.headers.get("X-Request-Id") || undefined,
+      );
+    }
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  } finally {
+    scoped.cleanup();
   }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as {
-      message?: string;
-      detail?: string;
-      requestId?: string;
-    };
-    const fallback =
-      response.status === 401
-        ? "登录已失效或凭据不正确，请重新登录。"
-        : response.status === 403
-          ? "当前账号没有执行此操作的权限。"
-          : "请求失败，请重试。";
-    throw new ApiError(
-      body.message || body.detail || fallback,
-      response.status,
-      body.requestId || response.headers.get("X-Request-Id") || undefined,
-    );
-  }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 export function queryString(
   values: Record<string, string | number | undefined | null>,

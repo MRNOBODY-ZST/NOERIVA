@@ -20,7 +20,7 @@ import {
 import { useSessionStore } from "./stores/session";
 import { usePreferencesStore } from "./stores/preferences";
 import { useApiQuery } from "./services/queries";
-import { queryString } from "./services/api";
+import { onAuthorizationExpired, queryString } from "./services/api";
 import { useSystemSettings } from "./services/settings";
 import type { WorkspaceSearch } from "./services/workspace";
 import { workspacePages } from "./router";
@@ -133,6 +133,20 @@ async function logout() {
   auth.logout();
   password.value = "";
 }
+const stopExpiryListener = onAuthorizationExpired(() => {
+  // A rejected login stays on the form with its inline error.
+  if (!auth.session) return;
+  searchOpen.value = false;
+  mobile.value?.close();
+  clearTimeout(debounce);
+  search.value = "";
+  debounced.value = "";
+  password.value = "";
+  auth.logout();
+  void queryClient.cancelQueries();
+  queryClient.clear();
+  void router.replace("/overview");
+});
 function keys(event: KeyboardEvent) {
   if (
     (event.ctrlKey || event.metaKey) &&
@@ -171,6 +185,7 @@ watch(
 );
 onMounted(() => window.addEventListener("keydown", keys));
 onBeforeUnmount(() => {
+  stopExpiryListener();
   window.removeEventListener("keydown", keys);
   clearTimeout(debounce);
 });

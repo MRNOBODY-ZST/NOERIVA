@@ -10,7 +10,7 @@ async function login(page: Page) {
   ).toBeVisible();
 }
 
-test("selected windows show aggregate summaries and square daily heatmaps at desktop and mobile widths", async ({
+test("selected windows show aggregate summaries and continuous square heatmaps at desktop and mobile widths", async ({
   page,
 }) => {
   await login(page);
@@ -33,27 +33,60 @@ test("selected windows show aggregate summaries and square daily heatmaps at des
   await expect(page.getByText(/每 1 天均值/)).toBeVisible();
   await page.getByRole("link", { name: "core-asr-01", exact: true }).click();
   const heatmap = page.locator(".heatmap-square");
-  await expect(heatmap.locator(".heatmap-hour")).toHaveCount(168);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
-    const geometry = await heatmap.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      const cells = [...el.querySelectorAll(".heatmap-hour")].map((c) => {
-        const b = c.getBoundingClientRect();
-        return Math.abs(b.width - b.height);
+    for (const gridSize of [7, 28]) {
+      await page.getByLabel("热力图网格").selectOption(String(gridSize));
+      await expect(heatmap).toHaveAttribute("data-grid-size", String(gridSize));
+      await expect
+        .poll(async () =>
+          heatmap.evaluate((el) => {
+            const size = Number((el as HTMLElement).dataset.cellSize);
+            const cells = [
+              ...el.querySelectorAll('svg path:not([fill="none"])'),
+            ]
+              .map((c) => c.getBoundingClientRect())
+              .filter(
+                (b) =>
+                  Math.abs(b.width - size) < 1 && Math.abs(b.height - size) < 1,
+              );
+            return cells.length;
+          }),
+        )
+        .toBe(gridSize * gridSize);
+      const geometry = await heatmap.evaluate((el) => {
+        const r = el.getBoundingClientRect(),
+          size = Number((el as HTMLElement).dataset.cellSize);
+        const cells = [...el.querySelectorAll('svg path:not([fill="none"])')]
+          .map((c) => c.getBoundingClientRect())
+          .filter(
+            (b) =>
+              Math.abs(b.width - size) < 1 && Math.abs(b.height - size) < 1,
+          );
+        return {
+          difference: Math.abs(r.width - r.height),
+          cells: cells.map((b) => Math.abs(b.width - b.height)),
+          overflow: document.documentElement.scrollWidth > innerWidth,
+        };
       });
-      return {
-        difference: Math.abs(r.width - r.height),
-        cells,
-        overflow: document.documentElement.scrollWidth > innerWidth,
-      };
-    });
-    expect(geometry.difference).toBeLessThan(1);
-    expect(Math.max(...geometry.cells)).toBeLessThan(1);
-    expect(geometry.overflow).toBe(false);
+      expect(geometry.difference).toBeLessThan(1);
+      expect(Math.max(...geometry.cells)).toBeLessThan(1);
+      expect(geometry.overflow).toBe(false);
+      await page.getByLabel("热力图行", { exact: true }).selectOption("0");
+      await page.getByLabel("热力图列", { exact: true }).selectOption("0");
+      await page.getByRole("button", { name: "查看时段", exact: true }).click();
+      await expect(page.locator(".chart-inspector")).toContainText("覆盖");
+    }
   }
-  await heatmap.locator(".heatmap-hour").first().click();
-  await expect(page.locator(".chart-inspector")).toContainText("00:00");
+  const capture = async (path: string) => {
+    await heatmap.evaluate((el) =>
+      window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top - 90),
+    );
+    await heatmap.screenshot({ path });
+  };
+  await capture("/tmp/noeriva-square-heatmap/matrix-mobile.png");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await capture("/tmp/noeriva-square-heatmap/matrix-desktop.png");
 });
 
 test("manual interface selector filters the directory and carries the interface into history", async ({
@@ -202,8 +235,12 @@ test("application window cards and charts remain balanced with twelve synthetic 
     );
   expect(charts).toHaveLength(2);
   expect(Math.abs(charts[0]! - charts[1]!)).toBeLessThan(1);
+  await page.getByLabel("应用排行指标").selectOption("bytes");
+  await expect(page.locator(".application-charts").first()).toContainText(
+    "累计流量",
+  );
   await page.screenshot({
-    path: "/tmp/noeriva-refinements/application-statistics.png",
+    path: "/tmp/noeriva-square-heatmap/application-statistics.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -213,4 +250,39 @@ test("application window cards and charts remain balanced with twelve synthetic 
     ),
   ).toBe(false);
   await expect(page.getByLabel("时间范围", { exact: true })).toBeVisible();
+});
+
+test("monitoring comparison opens bucket-mean history and keeps the source details available", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await login(page);
+  await expect(
+    page.getByRole("img", { name: "各站点资产健康状态堆叠条形图" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "监测与传感器", exact: true }).click();
+  const comparison = page.getByRole("region", { name: "监测当前值对比" });
+  await expect(comparison.locator("svg")).toBeVisible();
+  const source = page.getByLabel("选择监测来源并查看趋势", { exact: true });
+  const key = await source.locator("option").nth(1).getAttribute("value");
+  await source.selectOption(key!);
+  await expect(page.getByRole("heading", { name: /历史趋势/ })).toBeVisible();
+  const response = page.waitForResponse(
+    (r) =>
+      r.url().includes("/metrics?") &&
+      new URL(r.url()).searchParams.get("points") === "8",
+  );
+  await page.getByLabel("监测时间范围").selectOption("168");
+  expect((await (await response).json()).resolution).toBe(86400);
+  await expect(page.getByText(/每 1 天均值/)).toBeVisible();
+  await page.locator("[data-monitoring-details] summary").click();
+  await expect(
+    page.locator("[data-monitoring-details] tbody tr").first(),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/tmp/noeriva-square-heatmap/monitoring-comparison.png",
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
 });
